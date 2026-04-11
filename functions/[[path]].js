@@ -169,7 +169,7 @@ function renderRoutesList(routes) {
   const groupsHtml = Object.entries(groups)
     .map(([name, items]) => {
       const inner = items.map(liFor).join('');
-      return `<li class="group"><details open><summary>${name}/</summary><ul>${inner}</ul></details></li>`;
+      return `<li class="group"><details><summary>${name}/</summary><ul>${inner}</ul></details></li>`;
     })
     .join('');
 
