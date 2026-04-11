@@ -224,12 +224,11 @@ function getRootHtml() {
   <div class="wrap">
     <div class="card">
       <div class="brand">
-        <svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="4" width="120" height="120" rx="18" ry="18" fill="#6B4A3B" stroke="#3E2A20" stroke-width="4"/>
-          <path d="M16 54 L46 54 L46 42 L66 64 L46 86 L46 74 L16 74 Z" fill="#F5DDB8" stroke="#3E2A20" stroke-width="3" stroke-linejoin="round"/>
-          <ellipse cx="68" cy="64" rx="6" ry="28" fill="none" stroke="#6FA5A8" stroke-width="5"/>
-          <ellipse cx="56" cy="64" rx="6" ry="28" fill="none" stroke="#9BC5C5" stroke-width="5"/>
-          <path d="M78 58 L88 58 L88 48 L104 64 L88 80 L88 70 L78 70 Z" fill="#F5DDB8" stroke="#3E2A20" stroke-width="3" stroke-linejoin="round"/>
+        <svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" fill="none">
+          <path d="M16 54 L46 54 L46 42 L66 64 L46 86 L46 74 L16 74 Z" fill="currentColor"/>
+          <ellipse cx="68" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5" stroke-opacity="0.55"/>
+          <ellipse cx="56" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5"/>
+          <path d="M78 58 L88 58 L88 48 L104 64 L88 80 L88 70 L78 70 Z" fill="currentColor"/>
         </svg>
         <div class="name">Warp</div>
       </div>
