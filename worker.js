@@ -181,9 +181,8 @@ function getRootHtml() {
           margin-bottom: 24px;
       }
       .brand svg {
-          width: 72px;
-          height: 72px;
-          color: #2c3e50;
+          width: 88px;
+          height: 88px;
       }
       .brand .name {
           margin-top: 10px;
@@ -209,7 +208,6 @@ function getRootHtml() {
       @media (prefers-color-scheme: dark) {
           body, html { background: #121212; color: #e0e0e0; }
           .card { background: #1e1e1e; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-          .brand svg { color: #e0e0e0; }
           li { border-bottom-color: rgba(255,255,255,0.1); }
           code { background: rgba(255,255,255,0.08); }
           a:hover code { background: rgba(255,255,255,0.15); }
@@ -220,12 +218,12 @@ function getRootHtml() {
   <div class="wrap">
     <div class="card">
       <div class="brand">
-        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg">
-          <path d="M6 14 Q32 32 58 14"/>
-          <path d="M6 24 Q32 32 58 24"/>
-          <path d="M6 40 Q32 32 58 40"/>
-          <path d="M6 50 Q32 32 58 50"/>
-          <circle cx="32" cy="32" r="3" fill="currentColor" stroke="none"/>
+        <svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="120" height="120" rx="18" ry="18" fill="#6B4A3B" stroke="#3E2A20" stroke-width="4"/>
+          <path d="M16 54 L46 54 L46 42 L66 64 L46 86 L46 74 L16 74 Z" fill="#F5DDB8" stroke="#3E2A20" stroke-width="3" stroke-linejoin="round"/>
+          <ellipse cx="68" cy="64" rx="6" ry="28" fill="none" stroke="#6FA5A8" stroke-width="5"/>
+          <ellipse cx="56" cy="64" rx="6" ry="28" fill="none" stroke="#9BC5C5" stroke-width="5"/>
+          <path d="M78 58 L88 58 L88 48 L104 64 L88 80 L88 70 L78 70 Z" fill="#F5DDB8" stroke="#3E2A20" stroke-width="3" stroke-linejoin="round"/>
         </svg>
         <div class="name">Warp</div>
       </div>
