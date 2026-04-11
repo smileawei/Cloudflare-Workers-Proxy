@@ -3,6 +3,8 @@
 const ROUTES = {
   '/gh': 'https://github.com',
   '/api': 'https://api.openai.com',
+  '/iptv/gd-all.m3u':
+    'https://raw.githubusercontent.com/smileawei/ChinaTelecom-GuangdongIPTV-RTP-List/master/iptv-all.m3u',
 };
 
 addEventListener('fetch', event => {
@@ -29,7 +31,9 @@ async function handleRequest(request) {
     const { prefix, target } = match;
 
     // 剥掉前缀后拼接到目标站点
-    const remaining = url.pathname.slice(prefix.length) || '/';
+    // 精确匹配（pathname === prefix）时 remaining 为 ''，保留 target 原样，
+    // 这样像 /iptv/gd-all.m3u 这种指向具体文件的路由不会被追加多余的 '/'
+    const remaining = url.pathname.slice(prefix.length);
     const actualUrlStr = target + remaining + url.search;
 
     // 创建新 Headers 对象，排除以 'cf-' 开头的请求头
