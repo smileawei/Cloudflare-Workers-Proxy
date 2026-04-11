@@ -1,8 +1,5 @@
 // 路由映射：请求路径前缀 -> 目标站点
-// 访问 your-worker.com/gh/foo/bar 会被转发到 https://github.com/foo/bar
 const ROUTES = {
-  '/gh': 'https://github.com',
-  '/api': 'https://api.openai.com',
   '/iptv/gd-all.m3u':
     'https://raw.githubusercontent.com/smileawei/ChinaTelecom-GuangdongIPTV-RTP-List/master/iptv-all.m3u',
   '/iptv/epg.xml':
