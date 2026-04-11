@@ -142,7 +142,7 @@ function getRootHtml() {
   const items = Object.entries(ROUTES)
     .map(
       ([prefix, target]) =>
-        `<li><a href="${prefix}/"><code>${prefix}</code></a> &rarr; <span>${target}</span></li>`
+        `<li><a href="${prefix}"><code>${prefix}</code></a> &rarr; <span>${target}</span></li>`
     )
     .join('');
 
