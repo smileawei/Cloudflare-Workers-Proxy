@@ -174,11 +174,23 @@ function getRootHtml() {
           background: #f7f7f8;
           box-shadow: 0 4px 20px rgba(0,0,0,0.06);
       }
-      h1 {
-          margin: 0 0 20px;
+      .brand {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-bottom: 24px;
+      }
+      .brand svg {
+          width: 72px;
+          height: 72px;
+          color: #2c3e50;
+      }
+      .brand .name {
+          margin-top: 10px;
+          font-size: 1.1rem;
           font-weight: 300;
-          letter-spacing: 0.15em;
-          text-align: center;
+          letter-spacing: 0.25em;
+          text-transform: uppercase;
       }
       ul { list-style: none; padding: 0; margin: 0; }
       li {
@@ -197,6 +209,7 @@ function getRootHtml() {
       @media (prefers-color-scheme: dark) {
           body, html { background: #121212; color: #e0e0e0; }
           .card { background: #1e1e1e; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+          .brand svg { color: #e0e0e0; }
           li { border-bottom-color: rgba(255,255,255,0.1); }
           code { background: rgba(255,255,255,0.08); }
           a:hover code { background: rgba(255,255,255,0.15); }
@@ -206,7 +219,16 @@ function getRootHtml() {
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Warp</h1>
+      <div class="brand">
+        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 14 Q32 32 58 14"/>
+          <path d="M6 24 Q32 32 58 24"/>
+          <path d="M6 40 Q32 32 58 40"/>
+          <path d="M6 50 Q32 32 58 50"/>
+          <circle cx="32" cy="32" r="3" fill="currentColor" stroke="none"/>
+        </svg>
+        <div class="name">Warp</div>
+      </div>
       <ul>${items}</ul>
     </div>
   </div>
