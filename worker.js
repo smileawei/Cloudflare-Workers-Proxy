@@ -170,15 +170,20 @@ function renderRoutesList(routes) {
   return `<ul>${rootHtml}${groupsHtml}</ul>`;
 }
 
+// 品牌 logo（内嵌 SVG，带 prefers-color-scheme 自适应）
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none"><style>.a{fill:#2c3e50}@media(prefers-color-scheme:dark){.a{fill:#e0e0e0}}</style><path class="a" d="M16 54 L46 54 L46 42 L66 64 L46 86 L46 74 L16 74 Z"/><ellipse cx="68" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5" stroke-opacity="0.55"/><ellipse cx="56" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5"/><path class="a" d="M78 58 L88 58 L88 48 L104 64 L88 80 L88 70 L78 70 Z"/></svg>`;
+
 // 返回根目录的 HTML：只展示可用路径，不展示背后的原始地址
 function getRootHtml() {
   const routesHtml = renderRoutesList(ROUTES);
+  const favicon = `data:image/svg+xml,${encodeURIComponent(LOGO_SVG)}`;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <title>Warp</title>
+  <link rel="icon" type="image/svg+xml" href="${favicon}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
       body, html {
@@ -279,12 +284,7 @@ function getRootHtml() {
   <div class="wrap">
     <div class="card">
       <div class="brand">
-        <svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" fill="none">
-          <path d="M16 54 L46 54 L46 42 L66 64 L46 86 L46 74 L16 74 Z" fill="currentColor"/>
-          <ellipse cx="68" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5" stroke-opacity="0.55"/>
-          <ellipse cx="56" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5"/>
-          <path d="M78 58 L88 58 L88 48 L104 64 L88 80 L88 70 L78 70 Z" fill="currentColor"/>
-        </svg>
+        ${LOGO_SVG}
         <div class="name">Warp</div>
       </div>
       ${routesHtml}
