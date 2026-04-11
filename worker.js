@@ -136,8 +136,12 @@ function setCorsHeaders(headers) {
   headers.set('Access-Control-Allow-Headers', '*');
 }
 
-// 返回根目录的 HTML（不暴露具体路由）
+// 返回根目录的 HTML：只展示可用路径，不展示背后的原始地址
 function getRootHtml() {
+  const items = Object.keys(ROUTES)
+    .map(prefix => `<li><a href="${prefix}"><code>${prefix}</code></a></li>`)
+    .join('');
+
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -149,20 +153,61 @@ function getRootHtml() {
           height: 100%;
           margin: 0;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          display: flex;
-          align-items: center;
-          justify-content: center;
           background: #ffffff;
           color: #2c3e50;
       }
-      h1 { font-weight: 300; letter-spacing: 0.15em; }
+      .wrap {
+          min-height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          box-sizing: border-box;
+      }
+      .card {
+          width: 100%;
+          max-width: 420px;
+          padding: 32px 36px;
+          border-radius: 12px;
+          background: #f7f7f8;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      }
+      h1 {
+          margin: 0 0 20px;
+          font-weight: 300;
+          letter-spacing: 0.15em;
+          text-align: center;
+      }
+      ul { list-style: none; padding: 0; margin: 0; }
+      li {
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(0,0,0,0.08);
+      }
+      li:last-child { border-bottom: none; }
+      a { color: inherit; text-decoration: none; }
+      a:hover code { background: rgba(0,0,0,0.1); }
+      code {
+          background: rgba(0,0,0,0.05);
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-size: 0.95em;
+      }
       @media (prefers-color-scheme: dark) {
           body, html { background: #121212; color: #e0e0e0; }
+          .card { background: #1e1e1e; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+          li { border-bottom-color: rgba(255,255,255,0.1); }
+          code { background: rgba(255,255,255,0.08); }
+          a:hover code { background: rgba(255,255,255,0.15); }
       }
   </style>
 </head>
 <body>
-  <h1>Warp</h1>
+  <div class="wrap">
+    <div class="card">
+      <h1>Warp</h1>
+      <ul>${items}</ul>
+    </div>
+  </div>
 </body>
 </html>`;
 }
