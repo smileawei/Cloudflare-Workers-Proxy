@@ -6,7 +6,7 @@
 
 // 路由映射：请求路径前缀 -> 目标站点
 const ROUTES = {
-  '/iptv/gd-all.m3u':
+  '/iptv/iptv-all.m3u':
     'https://raw.githubusercontent.com/smileawei/ChinaTelecom-GuangdongIPTV-RTP-List/master/iptv-all.m3u',
   '/iptv/epg.xml':
     'https://raw.githubusercontent.com/smileawei/ChinaTelecom-GuangdongIPTV-RTP-List/refs/heads/master/epg.xml',
