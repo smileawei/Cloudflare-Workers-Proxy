@@ -1,213 +1,183 @@
+// 路由映射：请求路径前缀 -> 目标站点
+// 访问 your-worker.com/gh/foo/bar 会被转发到 https://github.com/foo/bar
+const ROUTES = {
+  '/gh': 'https://github.com',
+  '/api': 'https://api.openai.com',
+};
+
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
 });
 
 async function handleRequest(request) {
   try {
-      const url = new URL(request.url);
+    const url = new URL(request.url);
 
-      // 如果访问根目录，返回HTML
-      if (url.pathname === "/") {
-          return new Response(getRootHtml(), {
-              headers: {
-                  'Content-Type': 'text/html; charset=utf-8'
-              }
-          });
-      }
-
-      // 从请求路径中提取目标 URL
-      let actualUrlStr = decodeURIComponent(url.pathname.replace("/", ""));
-
-      // 判断用户输入的 URL 是否带有协议
-      actualUrlStr = ensureProtocol(actualUrlStr, url.protocol);
-
-      // 保留查询参数
-      actualUrlStr += url.search;
-
-      // 创建新 Headers 对象，排除以 'cf-' 开头的请求头
-      const newHeaders = filterHeaders(request.headers, name => !name.startsWith('cf-'));
-
-      // 创建一个新的请求以访问目标 URL
-      const modifiedRequest = new Request(actualUrlStr, {
-          headers: newHeaders,
-          method: request.method,
-          body: request.body,
-          redirect: 'manual'
+    // 根路径返回可用路由列表
+    if (url.pathname === '/' || url.pathname === '') {
+      return new Response(getRootHtml(), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
+    }
 
-      // 发起对目标 URL 的请求
-      const response = await fetch(modifiedRequest);
-      let body = response.body;
+    // 匹配路由前缀
+    const match = matchRoute(url.pathname);
+    if (!match) {
+      return jsonResponse({ error: 'Route not found' }, 404);
+    }
 
-      // 处理重定向
-      if ([301, 302, 303, 307, 308].includes(response.status)) {
-          body = response.body;
-          // 创建新的 Response 对象以修改 Location 头部
-          return handleRedirect(response, body);
-      } else if (response.headers.get("Content-Type")?.includes("text/html")) {
-          body = await handleHtmlContent(response, url.protocol, url.host, actualUrlStr);
-      }
+    const { prefix, target } = match;
 
-      // 创建修改后的响应对象
-      const modifiedResponse = new Response(body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
-      });
+    // 剥掉前缀后拼接到目标站点
+    const remaining = url.pathname.slice(prefix.length) || '/';
+    const actualUrlStr = target + remaining + url.search;
 
-      // 添加禁用缓存的头部
-      setNoCacheHeaders(modifiedResponse.headers);
+    // 创建新 Headers 对象，排除以 'cf-' 开头的请求头
+    const newHeaders = filterHeaders(request.headers, name => !name.startsWith('cf-'));
 
-      // 添加 CORS 头部，允许跨域访问
-      setCorsHeaders(modifiedResponse.headers);
+    const modifiedRequest = new Request(actualUrlStr, {
+      headers: newHeaders,
+      method: request.method,
+      body: request.body,
+      redirect: 'manual',
+    });
 
-      return modifiedResponse;
+    const response = await fetch(modifiedRequest);
+    let body = response.body;
+
+    // 处理重定向：把 Location 改写回代理前缀下
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      return handleRedirect(response, prefix, target);
+    } else if (response.headers.get('Content-Type')?.includes('text/html')) {
+      body = await handleHtmlContent(response, prefix);
+    }
+
+    const modifiedResponse = new Response(body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+
+    setNoCacheHeaders(modifiedResponse.headers);
+    setCorsHeaders(modifiedResponse.headers);
+
+    return modifiedResponse;
   } catch (error) {
-      // 如果请求目标地址时出现错误，返回带有错误消息的响应和状态码 500（服务器错误）
-      return jsonResponse({
-          error: error.message
-      }, 500);
+    return jsonResponse({ error: error.message }, 500);
   }
 }
 
-// 确保 URL 带有协议
-function ensureProtocol(url, defaultProtocol) {
-  return url.startsWith("http://") || url.startsWith("https://") ? url : defaultProtocol + "//" + url;
+// 按最长前缀匹配路由
+function matchRoute(pathname) {
+  let best = null;
+  for (const prefix of Object.keys(ROUTES)) {
+    if (pathname === prefix || pathname.startsWith(prefix + '/')) {
+      if (!best || prefix.length > best.prefix.length) {
+        best = { prefix, target: ROUTES[prefix] };
+      }
+    }
+  }
+  return best;
 }
 
-// 处理重定向
-function handleRedirect(response, body) {
-  const location = new URL(response.headers.get('location'));
-  const modifiedLocation = `/${encodeURIComponent(location.toString())}`;
-  return new Response(body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: {
-          ...response.headers,
-          'Location': modifiedLocation
-      }
+// 处理重定向，把 Location 头改写到代理前缀下
+function handleRedirect(response, prefix, target) {
+  const location = response.headers.get('location');
+  if (!location) return response;
+
+  let modifiedLocation = location;
+  try {
+    const locUrl = new URL(location, target);
+    // 如果跳转仍然落在目标站点上，改写为代理前缀路径
+    if (locUrl.origin === new URL(target).origin) {
+      modifiedLocation = prefix + locUrl.pathname + locUrl.search + locUrl.hash;
+    }
+  } catch (_) {
+    // location 解析失败则保持原样
+  }
+
+  const headers = new Headers(response.headers);
+  headers.set('Location', modifiedLocation);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
-// 处理 HTML 内容中的相对路径
-async function handleHtmlContent(response, protocol, host, actualUrlStr) {
+// 改写 HTML 中的站内绝对路径为代理前缀路径
+async function handleHtmlContent(response, prefix) {
   const originalText = await response.text();
-  const regex = new RegExp('((href|src|action)=["\'])/(?!/)', 'g');
-  let modifiedText = replaceRelativePaths(originalText, protocol, host, new URL(actualUrlStr).origin);
-
-  return modifiedText;
+  const regex = /((?:href|src|action)=["'])\/(?!\/)/g;
+  return originalText.replace(regex, `$1${prefix}/`);
 }
 
-// 替换 HTML 内容中的相对路径
-function replaceRelativePaths(text, protocol, host, origin) {
-  const regex = new RegExp('((href|src|action)=["\'])/(?!/)', 'g');
-  return text.replace(regex, `$1${protocol}//${host}/${origin}/`);
-}
-
-// 返回 JSON 格式的响应
 function jsonResponse(data, status) {
   return new Response(JSON.stringify(data), {
-      status: status,
-      headers: {
-          'Content-Type': 'application/json; charset=utf-8'
-      }
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
   });
 }
 
-// 过滤请求头
 function filterHeaders(headers, filterFunc) {
   return new Headers([...headers].filter(([name]) => filterFunc(name)));
 }
 
-// 设置禁用缓存的头部
 function setNoCacheHeaders(headers) {
   headers.set('Cache-Control', 'no-store');
 }
 
-// 设置 CORS 头部
 function setCorsHeaders(headers) {
   headers.set('Access-Control-Allow-Origin', '*');
   headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
   headers.set('Access-Control-Allow-Headers', '*');
 }
 
-// 返回根目录的 HTML
+// 返回根目录的 HTML，列出所有可用路由
 function getRootHtml() {
+  const items = Object.entries(ROUTES)
+    .map(
+      ([prefix, target]) =>
+        `<li><a href="${prefix}/"><code>${prefix}</code></a> &rarr; <span>${target}</span></li>`
+    )
+    .join('');
+
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <link href="https://s4.zstatic.net/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-  <title>Proxy Everything</title>
-  <link rel="icon" type="image/png" href="https://s2.hdslb.com/bfs/openplatform/1682b11880f5c53171217a03c8adc9f2e2a27fcf.png@100w.webp">
-  <meta name="Description" content="Proxy Everything with CF Workers.">
-  <meta property="og:description" content="Proxy Everything with CF Workers.">
-  <meta property="og:image" content="https://s2.hdslb.com/bfs/openplatform/1682b11880f5c53171217a03c8adc9f2e2a27fcf.png@100w.webp">
-  <meta name="robots" content="index, follow">
-  <meta http-equiv="Content-Language" content="zh-CN">
-  <meta name="copyright" content="Copyright © ymyuuu">
-  <meta name="author" content="ymyuuu">
-  <link rel="apple-touch-icon-precomposed" sizes="120x120" href="https://s2.hdslb.com/bfs/openplatform/1682b11880f5c53171217a03c8adc9f2e2a27fcf.png@100w.webp">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+  <title>Proxy Routes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-      body, html {
-          height: 100%;
-          margin: 0;
-      }
+      body, html { height: 100%; margin: 0; }
       .background {
-          background-size: cover;
-          background-position: center;
           height: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
       }
       .card {
-          background-color: rgba(255, 255, 255, 0.8);
+          background-color: rgba(255, 255, 255, 0.9);
           transition: background-color 0.3s ease, box-shadow 0.3s ease;
       }
-      .card:hover {
-          background-color: rgba(255, 255, 255, 1);
-          box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3);
+      .route-list { list-style: none; padding: 0; }
+      .route-list li {
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(0,0,0,0.1);
       }
-      .input-field input[type=text] {
-          color: #2c3e50;
-      }
-      .input-field input[type=text]:focus+label {
-          color: #2c3e50 !important;
-      }
-      .input-field input[type=text]:focus {
-          border-bottom: 1px solid #2c3e50 !important;
-          box-shadow: 0 1px 0 0 #2c3e50 !important;
+      .route-list li:last-child { border-bottom: none; }
+      .route-list code {
+          background: rgba(0,0,0,0.06);
+          padding: 2px 8px;
+          border-radius: 4px;
       }
       @media (prefers-color-scheme: dark) {
-          body, html {
-              background-color: #121212;
-              color: #e0e0e0;
-          }
-          .card {
-              background-color: rgba(33, 33, 33, 0.9);
-              color: #ffffff;
-          }
-          .card:hover {
-              background-color: rgba(50, 50, 50, 1);
-              box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.6);
-          }
-          .input-field input[type=text] {
-              color: #ffffff;
-          }
-          .input-field input[type=text]:focus+label {
-              color: #ffffff !important;
-          }
-          .input-field input[type=text]:focus {
-              border-bottom: 1px solid #ffffff !important;
-              box-shadow: 0 1px 0 0 #ffffff !important;
-          }
-          label {
-              color: #cccccc;
-          }
+          body, html { background-color: #121212; color: #e0e0e0; }
+          .card { background-color: rgba(33, 33, 33, 0.9); color: #ffffff; }
+          .route-list li { border-bottom-color: rgba(255,255,255,0.1); }
+          .route-list code { background: rgba(255,255,255,0.1); }
+          .route-list a { color: #80cbc4; }
       }
   </style>
 </head>
@@ -218,29 +188,14 @@ function getRootHtml() {
               <div class="col s12 m8 offset-m2 l6 offset-l3">
                   <div class="card">
                       <div class="card-content">
-                          <span class="card-title center-align"><i class="material-icons left">link</i>Proxy Everything</span>
-                          <form id="urlForm" onsubmit="redirectToProxy(event)">
-                              <div class="input-field">
-                                  <input type="text" id="targetUrl" placeholder="在此输入目标地址" required>
-                                  <label for="targetUrl">目标地址</label>
-                              </div>
-                              <button type="submit" class="btn waves-effect waves-light teal darken-2 full-width">跳转</button>
-                          </form>
+                          <span class="card-title center-align"><i class="material-icons left">link</i>Proxy Routes</span>
+                          <ul class="route-list">${items}</ul>
                       </div>
                   </div>
               </div>
           </div>
       </div>
   </div>
-  <script src="https://s4.zstatic.net/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-  <script>
-      function redirectToProxy(event) {
-          event.preventDefault();
-          const targetUrl = document.getElementById('targetUrl').value.trim();
-          const currentOrigin = window.location.origin;
-          window.open(currentOrigin + '/' + encodeURIComponent(targetUrl), '_blank');
-      }
-  </script>
 </body>
 </html>`;
 }
