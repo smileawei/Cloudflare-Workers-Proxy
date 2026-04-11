@@ -138,11 +138,41 @@ function setCorsHeaders(headers) {
   headers.set('Access-Control-Allow-Headers', '*');
 }
 
+// 按首段路径分组（例如 /iptv/xxx 全部归到 "iptv" 组，单段路径归到根）
+function groupRoutes(routes) {
+  const rootItems = [];
+  const groups = {};
+  for (const prefix of Object.keys(routes)) {
+    const segments = prefix.split('/').filter(Boolean);
+    if (segments.length <= 1) {
+      rootItems.push(prefix);
+    } else {
+      (groups[segments[0]] ||= []).push(prefix);
+    }
+  }
+  return { rootItems, groups };
+}
+
+// 构建路由列表 HTML：根路径直接显示，多段路径折叠成目录
+function renderRoutesList(routes) {
+  const { rootItems, groups } = groupRoutes(routes);
+  const liFor = p => `<li><a href="${p}"><code>${p}</code></a></li>`;
+
+  const rootHtml = rootItems.map(liFor).join('');
+
+  const groupsHtml = Object.entries(groups)
+    .map(([name, items]) => {
+      const inner = items.map(liFor).join('');
+      return `<li class="group"><details open><summary>${name}/</summary><ul>${inner}</ul></details></li>`;
+    })
+    .join('');
+
+  return `<ul>${rootHtml}${groupsHtml}</ul>`;
+}
+
 // 返回根目录的 HTML：只展示可用路径，不展示背后的原始地址
 function getRootHtml() {
-  const items = Object.keys(ROUTES)
-    .map(prefix => `<li><a href="${prefix}"><code>${prefix}</code></a></li>`)
-    .join('');
+  const routesHtml = renderRoutesList(ROUTES);
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -205,12 +235,43 @@ function getRootHtml() {
           border-radius: 4px;
           font-size: 0.95em;
       }
+      .group { padding: 0; }
+      .group > details { padding: 0; }
+      .group summary {
+          list-style: none;
+          cursor: pointer;
+          padding: 10px 0;
+          font-size: 0.95em;
+          opacity: 0.75;
+          user-select: none;
+      }
+      .group summary::-webkit-details-marker { display: none; }
+      .group summary::before {
+          content: '▸';
+          display: inline-block;
+          margin-right: 8px;
+          font-size: 0.8em;
+          transition: transform 0.15s ease;
+      }
+      .group details[open] summary::before {
+          transform: rotate(90deg);
+      }
+      .group details ul {
+          padding-left: 20px;
+          margin-bottom: 4px;
+      }
+      .group details li {
+          padding: 8px 0;
+          border-bottom: 1px dashed rgba(0,0,0,0.08);
+      }
+      .group details li:last-child { border-bottom: none; }
       @media (prefers-color-scheme: dark) {
           body, html { background: #121212; color: #e0e0e0; }
           .card { background: #1e1e1e; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
           li { border-bottom-color: rgba(255,255,255,0.1); }
           code { background: rgba(255,255,255,0.08); }
           a:hover code { background: rgba(255,255,255,0.15); }
+          .group details li { border-bottom-color: rgba(255,255,255,0.08); }
       }
   </style>
 </head>
@@ -226,7 +287,7 @@ function getRootHtml() {
         </svg>
         <div class="name">Warp</div>
       </div>
-      <ul>${items}</ul>
+      ${routesHtml}
     </div>
   </div>
 </body>
