@@ -136,69 +136,33 @@ function setCorsHeaders(headers) {
   headers.set('Access-Control-Allow-Headers', '*');
 }
 
-// 返回根目录的 HTML，列出所有可用路由
+// 返回根目录的 HTML（不暴露具体路由）
 function getRootHtml() {
-  const items = Object.entries(ROUTES)
-    .map(
-      ([prefix, target]) =>
-        `<li><a href="${prefix}"><code>${prefix}</code></a> &rarr; <span>${target}</span></li>`
-    )
-    .join('');
-
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <link href="https://s4.zstatic.net/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-  <title>Proxy Routes</title>
+  <title>Warp</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-      body, html { height: 100%; margin: 0; }
-      .background {
+      body, html {
           height: 100%;
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           display: flex;
           align-items: center;
           justify-content: center;
+          background: #ffffff;
+          color: #2c3e50;
       }
-      .card {
-          background-color: rgba(255, 255, 255, 0.9);
-          transition: background-color 0.3s ease, box-shadow 0.3s ease;
-      }
-      .route-list { list-style: none; padding: 0; }
-      .route-list li {
-          padding: 10px 0;
-          border-bottom: 1px solid rgba(0,0,0,0.1);
-      }
-      .route-list li:last-child { border-bottom: none; }
-      .route-list code {
-          background: rgba(0,0,0,0.06);
-          padding: 2px 8px;
-          border-radius: 4px;
-      }
+      h1 { font-weight: 300; letter-spacing: 0.15em; }
       @media (prefers-color-scheme: dark) {
-          body, html { background-color: #121212; color: #e0e0e0; }
-          .card { background-color: rgba(33, 33, 33, 0.9); color: #ffffff; }
-          .route-list li { border-bottom-color: rgba(255,255,255,0.1); }
-          .route-list code { background: rgba(255,255,255,0.1); }
-          .route-list a { color: #80cbc4; }
+          body, html { background: #121212; color: #e0e0e0; }
       }
   </style>
 </head>
 <body>
-  <div class="background">
-      <div class="container">
-          <div class="row">
-              <div class="col s12 m8 offset-m2 l6 offset-l3">
-                  <div class="card">
-                      <div class="card-content">
-                          <span class="card-title center-align"><i class="material-icons left">link</i>Proxy Routes</span>
-                          <ul class="route-list">${items}</ul>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
+  <h1>Warp</h1>
 </body>
 </html>`;
 }
