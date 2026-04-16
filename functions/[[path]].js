@@ -273,12 +273,12 @@ function getRootHtml(routes) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
       :root {
-          --bg: #07111d;
-          --card: rgba(8, 19, 31, 0.76);
-          --line: rgba(162, 184, 206, 0.18);
-          --text: #f3f7fb;
-          --muted: #9db0c5;
-          --accent: #5eead4;
+          --bg: #f4f7fb;
+          --card: rgba(255, 255, 255, 0.88);
+          --line: rgba(15, 23, 42, 0.08);
+          --text: #0f172a;
+          --muted: #64748b;
+          --accent: #0f766e;
           --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
       }
       *, *::before, *::after { box-sizing: border-box; }
@@ -287,198 +287,126 @@ function getRootHtml(routes) {
           font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
           color: var(--text);
           background:
-            radial-gradient(circle at 12% 18%, rgba(94,234,212,0.18), transparent 28%),
-            radial-gradient(circle at 84% 12%, rgba(34,197,94,0.16), transparent 24%),
-            radial-gradient(circle at 50% 120%, rgba(59,130,246,0.18), transparent 42%),
-            linear-gradient(160deg, #06101a 0%, #091828 46%, #07111d 100%);
-      }
-      body::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          background-image:
-            linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-          background-size: 32px 32px;
-          mask-image: radial-gradient(circle at center, black 38%, transparent 88%);
-          opacity: 0.3;
+            radial-gradient(circle at top, rgba(15,118,110,0.08), transparent 36%),
+            linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
       }
       .wrap {
           min-height: 100vh;
-          padding: 40px 24px;
+          padding: 28px 16px;
           display: flex;
           align-items: center;
           justify-content: center;
       }
       .shell {
-          width: min(1080px, 100%);
-          display: grid;
-          grid-template-columns: 1.05fr 0.95fr;
-          gap: 24px;
-          align-items: stretch;
-      }
-      .hero, .panel {
-          position: relative;
-          overflow: hidden;
+          width: min(760px, 100%);
           border: 1px solid var(--line);
           border-radius: 28px;
           background: var(--card);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          box-shadow: 0 22px 70px rgba(0, 0, 0, 0.32);
-      }
-      .hero {
-          padding: 34px;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          min-height: 620px;
-      }
-      .hero::after, .panel::after {
-          content: '';
-          position: absolute;
-          inset: auto -80px -120px auto;
-          width: 240px;
-          height: 240px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(94,234,212,0.22) 0%, transparent 72%);
-          pointer-events: none;
-      }
-      .eyebrow {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          padding: 10px 14px;
-          border-radius: 999px;
-          border: 1px solid rgba(94,234,212,0.2);
-          background: rgba(255,255,255,0.04);
-          color: var(--accent);
-          font-size: 0.82rem;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-      }
-      .eyebrow::before {
-          content: '';
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: currentColor;
-          box-shadow: 0 0 0 8px rgba(94,234,212,0.12);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+          padding: 28px;
       }
       .brand {
           display: flex;
           align-items: center;
-          gap: 16px;
-          margin-top: 18px;
+          gap: 14px;
       }
       .brand-mark {
-          width: 74px;
-          height: 74px;
-          padding: 14px;
+          width: 56px;
+          height: 56px;
+          padding: 12px;
           display: grid;
           place-items: center;
-          border-radius: 22px;
-          background: linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
-          border: 1px solid rgba(255,255,255,0.12);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.22);
+          border-radius: 18px;
+          background: rgba(15,118,110,0.08);
+          border: 1px solid rgba(15,118,110,0.12);
       }
       .brand-mark svg { width: 100%; height: 100%; }
       .brand-meta strong {
           display: block;
-          font-size: clamp(2rem, 4vw, 3.4rem);
-          line-height: 0.95;
-          letter-spacing: -0.05em;
+          font-size: clamp(1.8rem, 4vw, 2.6rem);
+          line-height: 1;
+          letter-spacing: -0.04em;
       }
       .brand-meta span {
-          display: block;
-          margin-top: 8px;
-          color: var(--muted);
-          font-size: 0.96rem;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-      }
-      .hero-copy h1 {
-          margin: 20px 0 14px;
-          max-width: 11ch;
-          font-size: clamp(2.2rem, 5vw, 4.8rem);
-          line-height: 0.95;
-          letter-spacing: -0.06em;
-      }
-      .hero-copy p {
-          margin: 0;
-          max-width: 42ch;
-          color: var(--muted);
-          font-size: 1.02rem;
-          line-height: 1.65;
-      }
-      .hero-stats {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 14px;
-          margin-top: 28px;
-      }
-      .stat {
-          padding: 16px 18px;
-          border-radius: 18px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-      }
-      .stat strong {
-          display: block;
-          font-size: 1.6rem;
-          letter-spacing: -0.05em;
-      }
-      .stat span {
           display: block;
           margin-top: 6px;
           color: var(--muted);
           font-size: 0.82rem;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
-          letter-spacing: 0.1em;
       }
-      .hero-note {
-          margin-top: 24px;
-          padding: 18px 20px;
-          border-radius: 22px;
-          background: linear-gradient(140deg, rgba(94,234,212,0.12), rgba(255,255,255,0.04));
-          border: 1px solid rgba(94,234,212,0.16);
-          color: #d9f7f1;
-          line-height: 1.6;
+      .intro {
+          margin: 22px 0 26px;
       }
-      .panel {
-          padding: 26px;
+      .intro h1 {
+          margin: 0 0 10px;
+          font-size: clamp(1.7rem, 4vw, 2.5rem);
+          line-height: 1.05;
+          letter-spacing: -0.05em;
+      }
+      .intro p {
+          margin: 0;
+          color: var(--muted);
+          font-size: 0.98rem;
+          line-height: 1.65;
+      }
+      .meta {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          margin-bottom: 22px;
+      }
+      .meta-card {
+          padding: 14px 16px;
+          border-radius: 18px;
+          background: rgba(255,255,255,0.72);
+          border: 1px solid var(--line);
+      }
+      .meta-card strong {
+          display: block;
+          font-size: 1.2rem;
+          letter-spacing: -0.04em;
+      }
+      .meta-card span {
+          display: block;
+          margin-top: 4px;
+          color: var(--muted);
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
       }
       .panel-head {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 20px;
+          gap: 12px;
+          margin-bottom: 16px;
       }
       .panel-head h2 {
           margin: 0;
-          font-size: 1.25rem;
-          letter-spacing: -0.03em;
+          font-size: 1.05rem;
+          letter-spacing: -0.02em;
       }
       .panel-head p {
           margin: 4px 0 0;
           color: var(--muted);
-          font-size: 0.92rem;
+          font-size: 0.9rem;
       }
       .pill {
-          padding: 9px 12px;
+          padding: 8px 10px;
           border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.12);
-          background: rgba(255,255,255,0.05);
-          color: var(--text);
-          font-size: 0.82rem;
+          border: 1px solid var(--line);
+          background: rgba(255,255,255,0.72);
+          color: var(--muted);
+          font-size: 0.78rem;
       }
       .empty-state {
-          padding: 28px 18px;
+          padding: 24px 18px;
           border-radius: 20px;
-          border: 1px dashed rgba(255,255,255,0.14);
-          background: rgba(255,255,255,0.03);
+          border: 1px dashed rgba(15, 23, 42, 0.12);
+          background: rgba(255,255,255,0.52);
           text-align: center;
           color: var(--muted);
           line-height: 1.7;
@@ -488,20 +416,18 @@ function getRootHtml(routes) {
           display: flex;
           align-items: center;
           width: 100%;
-          min-height: 60px;
-          padding: 14px 16px;
+          min-height: 56px;
+          padding: 13px 14px;
           border-radius: 18px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.04);
+          border: 1px solid var(--line);
+          background: rgba(255,255,255,0.72);
           color: inherit;
           text-decoration: none;
-          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+          transition: border-color 0.16s ease, background 0.16s ease;
       }
       li a:hover, .group summary:hover {
-          transform: translateY(-2px);
-          border-color: rgba(94,234,212,0.28);
-          background: rgba(94,234,212,0.09);
-          box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+          border-color: rgba(15,118,110,0.18);
+          background: rgba(15,118,110,0.04);
       }
       li a::before {
           content: '↗';
@@ -511,7 +437,7 @@ function getRootHtml(routes) {
           height: 34px;
           margin-right: 12px;
           border-radius: 12px;
-          background: rgba(94,234,212,0.12);
+          background: rgba(15,118,110,0.08);
           color: var(--accent);
           font-size: 0.95rem;
       }
@@ -524,7 +450,7 @@ function getRootHtml(routes) {
       }
       .group summary {
           cursor: pointer;
-          color: #dce7f2;
+          color: var(--text);
           user-select: none;
           list-style: none;
       }
@@ -551,58 +477,44 @@ function getRootHtml(routes) {
       .group details ul {
           margin-top: 10px;
           padding-left: 14px;
-          border-left: 1px solid rgba(255,255,255,0.08);
-      }
-      @media (max-width: 920px) {
-          .shell { grid-template-columns: 1fr; }
-          .hero { min-height: auto; }
+          border-left: 1px solid rgba(15,23,42,0.08);
       }
       @media (max-width: 640px) {
           .wrap { padding: 20px 14px; }
-          .hero, .panel { padding: 22px; border-radius: 24px; }
-          .brand { align-items: flex-start; }
-          .brand-meta strong { font-size: 2rem; }
-          .hero-stats { grid-template-columns: 1fr; }
+          .shell { padding: 20px; border-radius: 24px; }
+          .meta { grid-template-columns: 1fr; }
       }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="shell">
-      <section class="hero">
-        <div>
-          <div class="eyebrow">Edge Proxy Control</div>
-          <div class="hero-copy">
-            <div class="brand">
-              <div class="brand-mark">${LOGO_SVG}</div>
-              <div class="brand-meta">
-                <strong>Warp</strong>
-                <span>Cloudflare Route Fabric</span>
-              </div>
-            </div>
-            <h1>Proxy routes with a cleaner edge surface.</h1>
-            <p>Browse active prefixes, jump straight into routed endpoints, and keep the public landing page looking more like a control plane than a placeholder.</p>
-          </div>
-          <div class="hero-stats">
-            <div class="stat">
-              <strong>${routeCount}</strong>
-              <span>Active Routes</span>
-            </div>
-            <div class="stat">
-              <strong>KV</strong>
-              <span>Backed Config</span>
-            </div>
-            <div class="stat">
-              <strong>/admin</strong>
-              <span>Console Entry</span>
-            </div>
-          </div>
+    <main class="shell">
+      <div class="brand">
+        <div class="brand-mark">${LOGO_SVG}</div>
+        <div class="brand-meta">
+          <strong>Warp</strong>
+          <span>Cloudflare Route Fabric</span>
         </div>
-        <div class="hero-note">
-          Routes are matched by longest prefix first. Use the admin console to add, replace, or remove upstream mappings without editing code.
+      </div>
+      <div class="intro">
+        <h1>Simple route entry for your edge proxy.</h1>
+        <p>Browse active prefixes and jump directly into the proxied upstream without the extra dashboard chrome.</p>
+      </div>
+      <div class="meta">
+        <div class="meta-card">
+          <strong>${routeCount}</strong>
+          <span>Active Routes</span>
         </div>
-      </section>
-      <section class="panel">
+        <div class="meta-card">
+          <strong>KV</strong>
+          <span>Backed Config</span>
+        </div>
+        <div class="meta-card">
+          <strong>/admin</strong>
+          <span>Manage Routes</span>
+        </div>
+      </div>
+      <section>
         <div class="panel-head">
           <div>
             <h2>Published Prefixes</h2>
@@ -612,7 +524,7 @@ function getRootHtml(routes) {
         </div>
         ${routesHtml}
       </section>
-    </div>
+    </main>
   </div>
 </body>
 </html>`;
@@ -631,12 +543,12 @@ function getAdminHtml() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root {
-      --card: rgba(8, 18, 30, 0.8);
-      --line: rgba(160, 181, 203, 0.16);
-      --text: #f3f7fb;
-      --muted: #96abc0;
-      --accent: #5eead4;
-      --danger: #fb7185;
+      --card: rgba(255, 255, 255, 0.88);
+      --line: rgba(15, 23, 42, 0.08);
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #0f766e;
+      --danger: #be123c;
       --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
     }
     *, *::before, *::after { box-sizing: border-box; }
@@ -645,21 +557,8 @@ function getAdminHtml() {
       font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at 10% 10%, rgba(94,234,212,0.16), transparent 28%),
-        radial-gradient(circle at 92% 18%, rgba(59,130,246,0.16), transparent 24%),
-        linear-gradient(160deg, #050c14 0%, #0a1320 44%, #08101a 100%);
-    }
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 32px 32px;
-      mask-image: radial-gradient(circle at center, black 34%, transparent 82%);
-      opacity: 0.32;
+        radial-gradient(circle at top, rgba(15,118,110,0.08), transparent 36%),
+        linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
     }
     .wrap {
       min-height: 100vh;
@@ -669,52 +568,37 @@ function getAdminHtml() {
       padding: 28px;
     }
     .layout {
-      width: min(1200px, 100%);
-      display: grid;
-      grid-template-columns: 320px minmax(0, 1fr);
-      gap: 22px;
-      align-items: start;
+      width: min(820px, 100%);
     }
-    .rail, .card {
-      position: relative;
-      overflow: hidden;
+    .card {
       border-radius: 28px;
       border: 1px solid var(--line);
       background: var(--card);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      box-shadow: 0 24px 70px rgba(0,0,0,0.32);
-    }
-    .rail {
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
       padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      min-height: 720px;
-    }
-    .card {
-      padding: 24px;
-      min-height: 720px;
     }
     .brand {
       display: flex;
       align-items: center;
       gap: 14px;
+      margin-bottom: 22px;
     }
     .brand-mark {
-      width: 62px;
-      height: 62px;
+      width: 56px;
+      height: 56px;
       display: grid;
       place-items: center;
       padding: 12px;
       border-radius: 18px;
-      background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04));
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(15,118,110,0.08);
+      border: 1px solid rgba(15,118,110,0.12);
     }
     .brand-mark svg { width: 100%; height: 100%; }
     .brand-copy strong {
       display: block;
-      font-size: 1.55rem;
+      font-size: 1.45rem;
       letter-spacing: -0.04em;
     }
     .brand-copy span {
@@ -725,79 +609,43 @@ function getAdminHtml() {
       letter-spacing: 0.14em;
       text-transform: uppercase;
     }
-    .rail-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      width: fit-content;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(94,234,212,0.22);
-      color: var(--accent);
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-    }
-    .rail-badge::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 0 0 8px rgba(94,234,212,0.12);
-    }
-    .rail h1 {
-      margin: 0;
-      font-size: clamp(2rem, 4vw, 3rem);
-      line-height: 0.96;
-      letter-spacing: -0.06em;
-    }
-    .rail p, .section-copy {
+    .section-copy {
       margin: 0;
       color: var(--muted);
       line-height: 1.7;
-      font-size: 0.98rem;
+      font-size: 0.94rem;
     }
-    .rail-stats {
-      display: grid;
-      gap: 12px;
-      margin-top: auto;
+    .surface {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
-    .stat-box, .metric {
-      padding: 16px;
-      border-radius: 20px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
+    .metric {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid var(--line);
     }
-    .stat-box strong, .metric strong {
+    .metric strong {
       display: block;
-      font-size: 1.45rem;
+      font-size: 1.15rem;
       letter-spacing: -0.04em;
     }
-    .stat-box span, .metric span {
+    .metric span {
       display: block;
-      margin-top: 6px;
+      margin-top: 4px;
       color: var(--muted);
       font-size: 0.78rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
     }
-    .surface {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      height: 100%;
-    }
     .panel {
-      border-radius: 24px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.03);
-      padding: 22px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.68);
+      padding: 20px;
     }
     .login-shell {
-      max-width: 520px;
-      margin: auto;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -811,15 +659,15 @@ function getAdminHtml() {
     }
     h2 {
       margin: 0;
-      font-size: 1.3rem;
+      font-size: 1.08rem;
       letter-spacing: -0.04em;
       color: var(--text);
     }
     .mini-pill {
       padding: 8px 11px;
       border-radius: 999px;
-      background: rgba(94,234,212,0.08);
-      border: 1px solid rgba(94,234,212,0.2);
+      background: rgba(15,118,110,0.06);
+      border: 1px solid rgba(15,118,110,0.12);
       color: var(--accent);
       font-size: 0.78rem;
       letter-spacing: 0.12em;
@@ -829,7 +677,7 @@ function getAdminHtml() {
     .field-label {
       display: block;
       margin-bottom: 8px;
-      color: #dbe8f4;
+      color: var(--muted);
       font-size: 0.84rem;
       text-transform: uppercase;
       letter-spacing: 0.1em;
@@ -839,18 +687,18 @@ function getAdminHtml() {
       min-height: 52px;
       padding: 14px 16px;
       border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.82);
       color: var(--text);
       outline: none;
       font: inherit;
       transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     }
-    .text-input::placeholder { color: #7290ad; }
+    .text-input::placeholder { color: #94a3b8; }
     .text-input:focus {
-      border-color: rgba(94,234,212,0.32);
-      box-shadow: 0 0 0 4px rgba(94,234,212,0.1);
-      background: rgba(255,255,255,0.06);
+      border-color: rgba(15,118,110,0.2);
+      box-shadow: 0 0 0 4px rgba(15,118,110,0.08);
+      background: #fff;
     }
     .btn {
       min-height: 46px;
@@ -861,28 +709,26 @@ function getAdminHtml() {
       font: inherit;
       font-size: 0.9rem;
       font-weight: 600;
-      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+      transition: background 0.16s ease, border-color 0.16s ease;
     }
-    .btn:hover { transform: translateY(-1px); }
     .btn-primary {
-      color: #042018;
-      background: linear-gradient(135deg, #5eead4, #86efac);
-      box-shadow: 0 12px 28px rgba(94,234,212,0.18);
+      color: #fff;
+      background: #0f766e;
     }
     .btn-ghost {
       color: var(--muted);
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--line);
     }
     .btn-edit {
       color: var(--accent);
-      background: rgba(94,234,212,0.08);
-      border: 1px solid rgba(94,234,212,0.18);
+      background: rgba(15,118,110,0.06);
+      border: 1px solid rgba(15,118,110,0.12);
     }
     .btn-danger {
-      color: #ffdce2;
-      background: rgba(251,113,133,0.1);
-      border: 1px solid rgba(251,113,133,0.16);
+      color: var(--danger);
+      background: rgba(190,18,60,0.06);
+      border: 1px solid rgba(190,18,60,0.12);
     }
     .btn-sm {
       min-height: 38px;
@@ -895,7 +741,7 @@ function getAdminHtml() {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 20px;
+      gap: 14px;
     }
     .admin-meta {
       display: grid;
@@ -913,14 +759,8 @@ function getAdminHtml() {
       gap: 16px;
       padding: 16px 18px;
       border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.035);
-      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
-    }
-    .route-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(94,234,212,0.22);
-      background: rgba(94,234,212,0.06);
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.82);
     }
     .route-icon {
       width: 44px;
@@ -928,7 +768,7 @@ function getAdminHtml() {
       display: grid;
       place-items: center;
       border-radius: 14px;
-      background: rgba(94,234,212,0.1);
+      background: rgba(15,118,110,0.08);
       color: var(--accent);
       font-size: 1rem;
       flex: 0 0 auto;
@@ -938,7 +778,7 @@ function getAdminHtml() {
       font-family: var(--mono);
       font-size: 0.94rem;
       font-weight: 700;
-      color: #ecfdf5;
+      color: var(--text);
     }
     .route-target {
       margin-top: 5px;
@@ -956,8 +796,8 @@ function getAdminHtml() {
     .empty-msg {
       padding: 34px 20px;
       border-radius: 22px;
-      border: 1px dashed rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.03);
+      border: 1px dashed rgba(15,23,42,0.12);
+      background: rgba(255,255,255,0.58);
       color: var(--muted);
       text-align: center;
       line-height: 1.7;
@@ -979,10 +819,10 @@ function getAdminHtml() {
       transform: translateX(-50%) translateY(10px);
       padding: 13px 18px;
       border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(9,20,32,0.92);
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.96);
       color: var(--text);
-      box-shadow: 0 18px 36px rgba(0,0,0,0.28);
+      box-shadow: 0 10px 28px rgba(15,23,42,0.08);
       opacity: 0;
       transition: opacity 0.25s ease, transform 0.25s ease;
       pointer-events: none;
@@ -992,16 +832,11 @@ function getAdminHtml() {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
-    @media (max-width: 980px) {
-      .layout { grid-template-columns: 1fr; }
-      .rail, .card { min-height: auto; }
-      .rail-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    }
     @media (max-width: 720px) {
       .wrap { padding: 16px; }
-      .rail, .card { padding: 18px; border-radius: 24px; }
+      .card { padding: 18px; border-radius: 24px; }
       .admin-header { flex-direction: column; }
-      .admin-meta, .form-grid, .rail-stats { grid-template-columns: 1fr; }
+      .admin-meta, .form-grid { grid-template-columns: 1fr; }
       .route-card { flex-direction: column; align-items: flex-start; }
       .route-actions { width: 100%; justify-content: flex-end; }
       .login-shell .title { flex-direction: column; align-items: flex-start; }
@@ -1011,33 +846,14 @@ function getAdminHtml() {
 <body>
   <div class="wrap">
     <div class="layout">
-      <aside class="rail">
-        <div class="rail-badge">Admin Console</div>
+      <main class="card">
         <div class="brand">
           <div class="brand-mark">${LOGO_SVG}</div>
           <div class="brand-copy">
             <strong>Warp</strong>
-            <span>Routing Surface</span>
+            <span>Route Management</span>
           </div>
         </div>
-        <h1>Operate routes like a small edge control plane.</h1>
-        <p>Manage prefix mappings, verify login state, and keep the proxy surface coherent without dropping into code for every route change.</p>
-        <div class="rail-stats">
-          <div class="stat-box">
-            <strong id="stat-routes">0</strong>
-            <span>Routes Loaded</span>
-          </div>
-          <div class="stat-box">
-            <strong>KV</strong>
-            <span>Persistent Store</span>
-          </div>
-          <div class="stat-box">
-            <strong>Live</strong>
-            <span>Edge Updates</span>
-          </div>
-        </div>
-      </aside>
-      <main class="card">
         <div class="surface">
           <div id="login-section" class="login-shell">
             <div class="title">
@@ -1060,7 +876,7 @@ function getAdminHtml() {
             <div class="admin-header">
               <div>
                 <h2>Route Management</h2>
-                <p class="section-copy">Review active route prefixes, adjust upstream targets, and publish changes instantly.</p>
+                <p class="section-copy">Review active routes and update upstream targets with a lighter interface.</p>
               </div>
               <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
             </div>
@@ -1070,12 +886,12 @@ function getAdminHtml() {
                 <span>Total Routes</span>
               </div>
               <div class="metric">
-                <strong>Prefix</strong>
-                <span>Longest Match</span>
+                <strong id="stat-routes">0</strong>
+                <span>Routes Loaded</span>
               </div>
               <div class="metric">
-                <strong>/admin</strong>
-                <span>Secure Entry</span>
+                <strong>KV</strong>
+                <span>Persistent Store</span>
               </div>
             </div>
             <div class="panel">
