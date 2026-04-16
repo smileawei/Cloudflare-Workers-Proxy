@@ -493,17 +493,17 @@ function getRootHtml(routes) {
         <div class="brand-mark">${LOGO_SVG}</div>
         <div class="brand-meta">
           <strong>Warp</strong>
-          <span>Cloudflare Route Fabric</span>
+          <span>Proxy Routes</span>
         </div>
       </div>
       <div class="intro">
-        <h1>Simple route entry for your edge proxy.</h1>
-        <p>Browse active prefixes and jump directly into the proxied upstream without the extra dashboard chrome.</p>
+        <h1>Cloudflare Workers Proxy</h1>
+        <p>Browse the configured routes below and open the proxied destination directly.</p>
       </div>
       <div class="meta">
         <div class="meta-card">
           <strong>${routeCount}</strong>
-          <span>Active Routes</span>
+          <span>Configured Routes</span>
         </div>
         <div class="meta-card">
           <strong>KV</strong>
@@ -511,14 +511,14 @@ function getRootHtml(routes) {
         </div>
         <div class="meta-card">
           <strong>/admin</strong>
-          <span>Manage Routes</span>
+          <span>Admin Panel</span>
         </div>
       </div>
       <section>
         <div class="panel-head">
           <div>
-            <h2>Published Prefixes</h2>
-            <p>Choose a route to open its proxied upstream.</p>
+            <h2>Available Routes</h2>
+            <p>Select a route to access its proxied target.</p>
           </div>
           <div class="pill">${routeCount} route${routeCount === 1 ? '' : 's'}</div>
         </div>
@@ -851,15 +851,15 @@ function getAdminHtml() {
           <div class="brand-mark">${LOGO_SVG}</div>
           <div class="brand-copy">
             <strong>Warp</strong>
-            <span>Route Management</span>
+            <span>Admin Panel</span>
           </div>
         </div>
         <div class="surface">
           <div id="login-section" class="login-shell">
             <div class="title">
               <div>
-                <h2>Unlock Admin Access</h2>
-                <p class="section-copy">Authenticate with the configured admin password to view and modify route mappings.</p>
+                <h2>Admin Login</h2>
+                <p class="section-copy">Enter the admin password to manage routes.</p>
               </div>
               <div class="mini-pill">Protected</div>
             </div>
@@ -867,7 +867,7 @@ function getAdminHtml() {
               <label class="field-label" for="password-input">Admin Password</label>
               <input class="text-input" type="password" id="password-input" placeholder="Enter admin password" autofocus>
               <div style="margin-top:14px">
-                <button class="btn btn-primary" onclick="doLogin()" style="width:100%">Enter Console</button>
+                <button class="btn btn-primary" onclick="doLogin()" style="width:100%">Login</button>
               </div>
             </div>
           </div>
@@ -876,7 +876,7 @@ function getAdminHtml() {
             <div class="admin-header">
               <div>
                 <h2>Route Management</h2>
-                <p class="section-copy">Review active routes and update upstream targets with a lighter interface.</p>
+                <p class="section-copy">View, edit, and remove the currently configured routes.</p>
               </div>
               <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
             </div>
@@ -887,7 +887,7 @@ function getAdminHtml() {
               </div>
               <div class="metric">
                 <strong id="stat-routes">0</strong>
-                <span>Routes Loaded</span>
+                <span>Loaded Routes</span>
               </div>
               <div class="metric">
                 <strong>KV</strong>
@@ -899,8 +899,8 @@ function getAdminHtml() {
             </div>
             <div class="panel">
               <div style="margin-bottom:16px">
-                <h2 style="font-size:1.05rem">Add or Replace Route</h2>
-                <p class="section-copy">Use a prefix like <code style="font-family:var(--mono)">/api</code> and a full upstream URL.</p>
+                <h2 style="font-size:1.05rem">Add Route</h2>
+                <p class="section-copy">Enter a path prefix and the target URL for the proxy route.</p>
               </div>
               <div class="add-form">
                 <div class="form-grid">
@@ -914,7 +914,7 @@ function getAdminHtml() {
                   </div>
                 </div>
                 <div class="form-actions">
-                  <button class="btn btn-primary" onclick="addRoute()">Save Route</button>
+                  <button class="btn btn-primary" onclick="addRoute()">Add Route</button>
                 </div>
               </div>
             </div>
