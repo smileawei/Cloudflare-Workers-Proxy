@@ -1,22 +1,12 @@
 // Cloudflare Pages Functions 版本：catch-all 路由
 // 核心逻辑与根目录的 worker.js 保持一致，入口改为 Pages Functions 的 onRequest。
 
-// 默认路由映射（兜底，KV 中的配置优先）
-const DEFAULT_ROUTES = {
-  '/iptv/iptv-all.m3u':
-    'https://raw.githubusercontent.com/smileawei/ChinaTelecom-GuangdongIPTV-RTP-List/master/iptv-all.m3u',
-  '/iptv/iptv.m3u':
-    'https://raw.githubusercontent.com/smileawei/ChinaTelecom-GuangdongIPTV-RTP-List/master/iptv.m3u',
-  '/iptv/epg.xml':
-    'https://raw.githubusercontent.com/smileawei/ChinaTelecom-GuangdongIPTV-RTP-List/refs/heads/master/epg.xml',
-};
-
 export async function onRequest(context) {
   return handleRequest(context.request, context.env);
 }
 
-// 从 KV 加载自定义路由（不含默认路由）
-async function loadKvRoutes(env) {
+// 从 KV 加载路由
+async function loadRoutes(env) {
   if (env?.ROUTES_KV) {
     try {
       return (await env.ROUTES_KV.get('routes', 'json')) || {};
@@ -25,14 +15,8 @@ async function loadKvRoutes(env) {
   return {};
 }
 
-// 合并默认路由和 KV 路由（KV 优先）
-async function loadAllRoutes(env) {
-  const kvRoutes = await loadKvRoutes(env);
-  return { ...DEFAULT_ROUTES, ...kvRoutes };
-}
-
-// 保存自定义路由到 KV（只存 KV 自己的，不含默认路由）
-async function saveKvRoutes(env, routes) {
+// 保存路由到 KV
+async function saveRoutes(env, routes) {
   if (!env?.ROUTES_KV) {
     throw new Error('KV namespace ROUTES_KV not bound');
   }
@@ -61,7 +45,7 @@ async function handleRequest(request, env) {
       return handleAdminApi(request, url, env);
     }
 
-    const routes = await loadAllRoutes(env);
+    const routes = await loadRoutes(env);
 
     // 根路径返回可用路由列表
     if (url.pathname === '/' || url.pathname === '') {
@@ -128,8 +112,8 @@ async function handleAdminApi(request, url, env) {
   const path = url.pathname.replace('/admin/api', '');
 
   if (path === '/routes' && request.method === 'GET') {
-    const kvRoutes = await loadKvRoutes(env);
-    return jsonResponse({ defaults: DEFAULT_ROUTES, custom: kvRoutes }, 200);
+    const routes = await loadRoutes(env);
+    return jsonResponse({ routes }, 200);
   }
 
   if (path === '/routes' && request.method === 'POST') {
@@ -140,10 +124,10 @@ async function handleAdminApi(request, url, env) {
     if (!prefix.startsWith('/')) {
       return jsonResponse({ error: 'prefix must start with /' }, 400);
     }
-    const kvRoutes = await loadKvRoutes(env);
-    kvRoutes[prefix] = target;
-    await saveKvRoutes(env, kvRoutes);
-    return jsonResponse({ ok: true, defaults: DEFAULT_ROUTES, custom: kvRoutes }, 200);
+    const routes = await loadRoutes(env);
+    routes[prefix] = target;
+    await saveRoutes(env, routes);
+    return jsonResponse({ ok: true, routes }, 200);
   }
 
   if (path === '/routes' && request.method === 'DELETE') {
@@ -151,10 +135,10 @@ async function handleAdminApi(request, url, env) {
     if (!prefix) {
       return jsonResponse({ error: 'prefix is required' }, 400);
     }
-    const kvRoutes = await loadKvRoutes(env);
-    delete kvRoutes[prefix];
-    await saveKvRoutes(env, kvRoutes);
-    return jsonResponse({ ok: true, defaults: DEFAULT_ROUTES, custom: kvRoutes }, 200);
+    const routes = await loadRoutes(env);
+    delete routes[prefix];
+    await saveRoutes(env, routes);
+    return jsonResponse({ ok: true, routes }, 200);
   }
 
   if (path === '/check' && request.method === 'GET') {
@@ -562,13 +546,12 @@ function getAdminHtml() {
     async function loadRoutes() {
       const r = await fetch(API + '/routes', { headers: { 'X-Admin-Token': token } });
       const data = await r.json();
-      renderRoutes(data.defaults || {}, data.custom || {});
+      renderRoutes(data.routes || {});
     }
 
-    function renderRoutes(defaults, custom) {
-      const defEntries = Object.entries(defaults);
-      const customEntries = Object.entries(custom);
-      if (defEntries.length === 0 && customEntries.length === 0) {
+    function renderRoutes(routes) {
+      const entries = Object.entries(routes);
+      if (entries.length === 0) {
         document.getElementById('routes-list').innerHTML = '<div class="empty-msg">No routes configured</div>';
         return;
       }
@@ -578,12 +561,7 @@ function getAdminHtml() {
       table.innerHTML = '<thead><tr><th>Path</th><th>Target</th><th></th></tr></thead>';
       const tbody = document.createElement('tbody');
 
-      for (const [prefix, target] of defEntries) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td><code>' + escHtml(prefix) + '</code></td><td class="target">' + escHtml(target) + '</td><td><span style="opacity:0.4;font-size:0.8em">built-in</span></td>';
-        tbody.appendChild(tr);
-      }
-      for (const [prefix, target] of customEntries) {
+      for (const [prefix, target] of entries) {
         const tr = document.createElement('tr');
         tr.innerHTML = '<td><code>' + escHtml(prefix) + '</code></td><td class="target">' + escHtml(target) + '</td><td></td>';
         const btn = document.createElement('button');
@@ -611,7 +589,7 @@ function getAdminHtml() {
       if (data.ok) {
         document.getElementById('add-prefix').value = '';
         document.getElementById('add-target').value = '';
-        renderRoutes(data.defaults || {}, data.custom || {});
+        renderRoutes(data.routes || {});
         toast('Route added');
       } else {
         toast(data.error || 'Failed');
@@ -627,7 +605,7 @@ function getAdminHtml() {
       });
       const data = await r.json();
       if (data.ok) {
-        renderRoutes(data.defaults || {}, data.custom || {});
+        renderRoutes(data.routes || {});
         toast('Route deleted');
       } else {
         toast(data.error || 'Failed');
