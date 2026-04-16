@@ -428,6 +428,8 @@ function getAdminHtml() {
     .btn-danger { background: #ef4444; color: #fff; }
     .btn-danger:hover { background: #dc2626; }
     .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+    .btn-outline { background: transparent; border: 1px solid rgba(0,0,0,0.15); color: inherit; }
+    .btn-outline:hover { background: rgba(0,0,0,0.05); }
 
     /* Routes table */
     #admin-section { display: none; }
@@ -468,6 +470,8 @@ function getAdminHtml() {
       .route-table td code { background: rgba(255,255,255,0.08); }
       .add-form { border-top-color: rgba(255,255,255,0.1); }
       .toast { background: #f7f7f8; color: #2c3e50; }
+      .btn-outline { border-color: rgba(255,255,255,0.15); }
+      .btn-outline:hover { background: rgba(255,255,255,0.08); }
     }
   </style>
 </head>
@@ -489,7 +493,10 @@ function getAdminHtml() {
 
       <!-- Admin Panel -->
       <div id="admin-section">
-        <h2>Route Management</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <h2 style="margin:0">Route Management</h2>
+          <button class="btn btn-outline btn-sm" onclick="doLogout()">Logout</button>
+        </div>
         <div id="routes-list"></div>
         <div class="add-form">
           <div class="row">
@@ -536,6 +543,14 @@ function getAdminHtml() {
       loadRoutes();
     }
 
+    function doLogout() {
+      token = '';
+      sessionStorage.removeItem('admin_token');
+      document.getElementById('admin-section').style.display = 'none';
+      document.getElementById('login-section').style.display = '';
+      document.getElementById('password-input').value = '';
+    }
+
     async function apiCheck() {
       try {
         const r = await fetch(API + '/check', { headers: { 'X-Admin-Token': token } });
@@ -563,17 +578,36 @@ function getAdminHtml() {
 
       for (const [prefix, target] of entries) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td><code>' + escHtml(prefix) + '</code></td><td class="target">' + escHtml(target) + '</td><td></td>';
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-danger btn-sm';
-        btn.textContent = 'Delete';
-        btn.addEventListener('click', () => delRoute(prefix));
-        tr.lastChild.appendChild(btn);
+        tr.innerHTML = '<td><code>' + escHtml(prefix) + '</code></td><td class="target">' + escHtml(target) + '</td><td style="white-space:nowrap"></td>';
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-outline btn-sm';
+        editBtn.textContent = 'Edit';
+        editBtn.style.marginRight = '6px';
+        editBtn.addEventListener('click', () => editRoute(prefix, target));
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger btn-sm';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', () => delRoute(prefix));
+        tr.lastChild.appendChild(editBtn);
+        tr.lastChild.appendChild(delBtn);
         tbody.appendChild(tr);
       }
       table.appendChild(tbody);
       container.innerHTML = '';
       container.appendChild(table);
+    }
+
+    function editRoute(prefix, target) {
+      const newTarget = prompt('Edit target URL for ' + prefix, target);
+      if (newTarget === null || newTarget.trim() === '' || newTarget.trim() === target) return;
+      fetch(API + '/routes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+        body: JSON.stringify({ prefix, target: newTarget.trim() }),
+      }).then(r => r.json()).then(data => {
+        if (data.ok) { renderRoutes(data.routes || {}); toast('Route updated'); }
+        else toast(data.error || 'Failed');
+      });
     }
 
     async function addRoute() {
