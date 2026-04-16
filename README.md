@@ -35,7 +35,7 @@ Worker 会把请求转发到：
 
 - [worker.js](worker.js): Worker 主逻辑，包含代理逻辑、管理 API 和前端页面
 
-这个仓库当前是一个单文件脚本仓库，没有自带 `wrangler.toml` 或构建流程。你可以直接在 Cloudflare Dashboard 中创建 Worker 并粘贴脚本，也可以自行补充 Wrangler 配置后再部署。
+这个仓库当前以根目录的 [worker.js](worker.js) 作为主入口，并已包含最小可用的 [wrangler.toml](wrangler.toml) 和 [package.json](package.json)，可以直接用 Wrangler 本地调试和部署。
 
 ## 所需绑定
 
@@ -62,18 +62,31 @@ Worker 会把请求转发到：
 
 ### 方式二：使用 Wrangler
 
-仓库目前没有现成的 Wrangler 配置文件。如果你要用 Wrangler，至少需要自己补上：
+仓库已提供基础的 [wrangler.toml](wrangler.toml)，首次使用前需要把其中的 KV Namespace ID 替换成你自己的值：
 
-- `main = "worker.js"`
-- 一个名为 `ROUTES_KV` 的 KV 绑定
-- 一个名为 `ADMIN_PASSWORD` 的 Secret
+- `id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"`
+- `preview_id = "REPLACE_WITH_YOUR_KV_PREVIEW_ID"`
 
-示例命令思路：
+然后执行：
 
 ```bash
+npm install
 wrangler kv namespace create ROUTES_KV
 wrangler secret put ADMIN_PASSWORD
 wrangler deploy
+```
+
+如果你是先创建 KV，再回填配置，更合理的顺序是：
+
+1. `wrangler kv namespace create ROUTES_KV`
+2. 把返回的 `id` 和 `preview_id` 写入 [wrangler.toml](wrangler.toml)
+3. `wrangler secret put ADMIN_PASSWORD`
+4. `npm run deploy`
+
+本地调试可用：
+
+```bash
+npm run dev
 ```
 
 ## 使用方式

@@ -2,11 +2,15 @@ addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
 });
 
+const ROUTES_KV_KEY = 'routes';
+const ADMIN_API_PREFIX = '/admin/api';
+
 // 从 KV 加载路由
 async function loadRoutes() {
   if (typeof ROUTES_KV !== 'undefined') {
     try {
-      return (await ROUTES_KV.get('routes', 'json')) || {};
+      const routes = await ROUTES_KV.get(ROUTES_KV_KEY, 'json');
+      return isPlainObject(routes) ? routes : {};
     } catch (_) {}
   }
   return {};
@@ -17,7 +21,7 @@ async function saveRoutes(routes) {
   if (typeof ROUTES_KV === 'undefined') {
     throw new Error('KV namespace ROUTES_KV not bound');
   }
-  await ROUTES_KV.put('routes', JSON.stringify(routes));
+  await ROUTES_KV.put(ROUTES_KV_KEY, JSON.stringify(routes));
 }
 
 // 验证管理员密码
@@ -39,7 +43,7 @@ async function handleRequest(request) {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
     }
-    if (url.pathname.startsWith('/admin/api/')) {
+    if (url.pathname === ADMIN_API_PREFIX || url.pathname.startsWith(ADMIN_API_PREFIX + '/')) {
       return handleAdminApi(request, url);
     }
 
@@ -61,9 +65,9 @@ async function handleRequest(request) {
     const { prefix, target } = match;
 
     const remaining = url.pathname.slice(prefix.length);
-    const actualUrlStr = target + remaining + url.search;
+    const actualUrlStr = buildTargetUrl(target, remaining, url.search);
 
-    const newHeaders = filterHeaders(request.headers, name => !name.startsWith('cf-'));
+    const newHeaders = filterHeaders(request.headers, name => !name.startsWith('cf-') && name !== 'host');
 
     const modifiedRequest = new Request(actualUrlStr, {
       headers: newHeaders,
@@ -107,7 +111,7 @@ async function handleAdminApi(request, url) {
     return jsonResponse({ error: 'Unauthorized' }, 401);
   }
 
-  const path = url.pathname.replace('/admin/api', '');
+  const path = url.pathname.replace(ADMIN_API_PREFIX, '') || '/';
 
   if (path === '/routes' && request.method === 'GET') {
     const routes = await loadRoutes();
@@ -115,13 +119,17 @@ async function handleAdminApi(request, url) {
   }
 
   if (path === '/routes' && request.method === 'POST') {
-    const { prefix, target } = await request.json();
+    const payload = await readJson(request);
+    const normalized = normalizeRouteInput(payload);
+    if ('error' in normalized) {
+      return jsonResponse({ error: normalized.error }, 400);
+    }
+
+    const { prefix, target } = normalized;
     if (!prefix || !target) {
       return jsonResponse({ error: 'prefix and target are required' }, 400);
     }
-    if (!prefix.startsWith('/')) {
-      return jsonResponse({ error: 'prefix must start with /' }, 400);
-    }
+
     const routes = await loadRoutes();
     routes[prefix] = target;
     await saveRoutes(routes);
@@ -129,9 +137,10 @@ async function handleAdminApi(request, url) {
   }
 
   if (path === '/routes' && request.method === 'DELETE') {
-    const { prefix } = await request.json();
-    if (!prefix) {
-      return jsonResponse({ error: 'prefix is required' }, 400);
+    const payload = await readJson(request);
+    const prefix = normalizePrefix(payload?.prefix);
+    if (!prefix || prefix === '/') {
+      return jsonResponse({ error: 'valid prefix is required' }, 400);
     }
     const routes = await loadRoutes();
     delete routes[prefix];
@@ -149,8 +158,8 @@ async function handleAdminApi(request, url) {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
   };
 }
 
@@ -167,6 +176,24 @@ function matchRoute(pathname, routes) {
   return best;
 }
 
+function buildTargetUrl(target, remainingPath, search) {
+  const base = new URL(target);
+  const normalizedRemaining = remainingPath || '';
+
+  if (normalizedRemaining) {
+    base.pathname = joinUrlPaths(base.pathname, normalizedRemaining);
+  }
+
+  base.search = search || '';
+  return base.toString();
+}
+
+function joinUrlPaths(basePath, appendedPath) {
+  const left = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+  const right = appendedPath.startsWith('/') ? appendedPath : `/${appendedPath}`;
+  return `${left}${right}` || '/';
+}
+
 function handleRedirect(response, prefix, target) {
   const location = response.headers.get('location');
   if (!location) return response;
@@ -175,7 +202,7 @@ function handleRedirect(response, prefix, target) {
   try {
     const locUrl = new URL(location, target);
     if (locUrl.origin === new URL(target).origin) {
-      modifiedLocation = prefix + locUrl.pathname + locUrl.search + locUrl.hash;
+      modifiedLocation = mapLocationToProxyPath(locUrl, prefix, target);
     }
   } catch (_) {}
 
@@ -190,8 +217,9 @@ function handleRedirect(response, prefix, target) {
 
 async function handleHtmlContent(response, prefix) {
   const originalText = await response.text();
-  const regex = /((?:href|src|action)=["'])\/(?!\/)/g;
-  return originalText.replace(regex, `$1${prefix}/`);
+  const normalizedPrefix = prefix === '/' ? '' : prefix;
+  const regex = /((?:href|src|action)=["'])\/(?!\/)/gi;
+  return originalText.replace(regex, `$1${normalizedPrefix}/`);
 }
 
 function jsonResponse(data, status) {
@@ -214,8 +242,81 @@ function setNoCacheHeaders(headers) {
 
 function setCorsHeaders(headers) {
   headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-  headers.set('Access-Control-Allow-Headers', '*');
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizePrefix(input) {
+  if (typeof input !== 'string') return '';
+
+  const trimmed = input.trim();
+  if (!trimmed.startsWith('/')) return '';
+  if (trimmed.includes('://')) return '';
+
+  const collapsed = trimmed.replace(/\/{2,}/g, '/');
+  if (collapsed === '/') return '/';
+  return collapsed.endsWith('/') ? collapsed.slice(0, -1) : collapsed;
+}
+
+function normalizeTarget(input) {
+  if (typeof input !== 'string') return '';
+
+  const trimmed = input.trim();
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, url.pathname === '/' ? '' : '/');
+  } catch (_) {
+    return '';
+  }
+}
+
+function normalizeRouteInput(payload) {
+  const prefix = normalizePrefix(payload?.prefix);
+  const target = normalizeTarget(payload?.target);
+
+  if (!prefix) {
+    return { error: 'prefix must start with / and be a valid path' };
+  }
+
+  if (prefix === '/admin' || prefix.startsWith('/admin/')) {
+    return { error: 'prefix cannot use the reserved /admin path' };
+  }
+
+  if (!target) {
+    return { error: 'target must be a valid http(s) URL' };
+  }
+
+  return { prefix, target };
+}
+
+async function readJson(request) {
+  try {
+    return await request.json();
+  } catch (_) {
+    return null;
+  }
+}
+
+function mapLocationToProxyPath(locUrl, prefix, target) {
+  const targetUrl = new URL(target);
+  const targetPath = targetUrl.pathname === '/' ? '' : targetUrl.pathname.replace(/\/$/, '');
+  let remainder = locUrl.pathname;
+
+  if (targetPath && remainder.startsWith(targetPath + '/')) {
+    remainder = remainder.slice(targetPath.length);
+  } else if (targetPath && remainder === targetPath) {
+    remainder = '';
+  }
+
+  return `${prefix}${remainder}${locUrl.search}${locUrl.hash}` || '/';
 }
 
 function groupRoutes(routes) {
@@ -246,11 +347,16 @@ function renderRoutesList(routes) {
   const rootHtml = rootItems.map(liFor).join('');
 
   const groupsHtml = Object.entries(groups)
+    .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, items]) => {
-      const inner = items.map(liFor).join('');
+      const inner = items.sort().map(liFor).join('');
       return `<li class="group"><details><summary>${escapeHtml(name)}/</summary><ul>${inner}</ul></details></li>`;
     })
     .join('');
+
+  if (!rootHtml && !groupsHtml) {
+    return '<div class="empty-state">No routes configured yet</div>';
+  }
 
   return `<ul>${rootHtml}${groupsHtml}</ul>`;
 }
@@ -269,97 +375,73 @@ function getRootHtml(routes) {
   <link rel="icon" type="image/svg+xml" href="${favicon}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+      *, *::before, *::after { box-sizing: border-box; }
       body, html {
-          height: 100%;
-          margin: 0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          background: #ffffff;
-          color: #2c3e50;
+          height: 100%; margin: 0;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          background: #f0f2f5; color: #1a1a2e;
       }
       .wrap {
-          min-height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          min-height: 100%; display: flex; align-items: center; justify-content: center;
           padding: 24px;
-          box-sizing: border-box;
       }
       .card {
-          width: 100%;
-          max-width: 420px;
-          padding: 32px 36px;
-          border-radius: 12px;
-          background: #f7f7f8;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+          width: 100%; max-width: 440px; padding: 40px;
+          border-radius: 20px;
+          background: rgba(255,255,255,0.7);
+          backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.8);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.08);
       }
-      .brand {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          margin-bottom: 24px;
-      }
-      .brand svg {
-          width: 88px;
-          height: 88px;
-      }
+      .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 28px; }
+      .brand svg { width: 72px; height: 72px; filter: drop-shadow(0 2px 8px rgba(20,184,166,0.3)); }
       .brand .name {
-          margin-top: 10px;
-          font-size: 1.1rem;
-          font-weight: 300;
-          letter-spacing: 0.25em;
-          text-transform: uppercase;
+          margin-top: 12px; font-size: 0.85rem; font-weight: 600;
+          letter-spacing: 0.3em; text-transform: uppercase; color: #14b8a6;
       }
-      ul { list-style: none; padding: 0; margin: 0; }
-      li {
-          padding: 10px 0;
-          border-bottom: 1px solid rgba(0,0,0,0.08);
+      .empty-state {
+          text-align: center; color: #64748b; font-size: 0.95rem;
+          padding: 16px 8px;
       }
-      li:last-child { border-bottom: none; }
-      a { color: inherit; text-decoration: none; }
-      a:hover code { background: rgba(0,0,0,0.1); }
-      code {
-          background: rgba(0,0,0,0.05);
-          padding: 3px 8px;
-          border-radius: 4px;
-          font-size: 0.95em;
+      ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+      li a {
+          display: block; padding: 12px 16px; border-radius: 12px;
+          background: rgba(0,0,0,0.03); text-decoration: none; color: inherit;
+          transition: all 0.2s ease;
+      }
+      li a:hover { background: rgba(20,184,166,0.08); transform: translateX(4px); }
+      li a code {
+          background: none; padding: 0; font-size: 0.9em;
+          font-family: 'SF Mono', 'Fira Code', monospace;
       }
       .group { padding: 0; }
       .group > details { padding: 0; }
       .group summary {
-          list-style: none;
-          cursor: pointer;
-          padding: 10px 0;
-          font-size: 0.95em;
-          opacity: 0.75;
-          user-select: none;
+          list-style: none; cursor: pointer; padding: 10px 16px;
+          font-size: 0.9em; font-weight: 500; color: #64748b;
+          user-select: none; border-radius: 10px; transition: background 0.15s;
       }
+      .group summary:hover { background: rgba(0,0,0,0.03); }
       .group summary::-webkit-details-marker { display: none; }
       .group summary::before {
-          content: '▸';
-          display: inline-block;
-          margin-right: 8px;
-          font-size: 0.8em;
-          transition: transform 0.15s ease;
+          content: ''; display: inline-block; width: 6px; height: 6px;
+          border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+          transform: rotate(-45deg); margin-right: 10px;
+          transition: transform 0.2s ease;
       }
-      .group details[open] summary::before {
-          transform: rotate(90deg);
-      }
-      .group details ul {
-          padding-left: 20px;
-          margin-bottom: 4px;
-      }
-      .group details li {
-          padding: 8px 0;
-          border-bottom: 1px dashed rgba(0,0,0,0.08);
-      }
-      .group details li:last-child { border-bottom: none; }
+      .group details[open] summary::before { transform: rotate(45deg); }
+      .group details ul { padding-left: 12px; margin-top: 4px; margin-bottom: 4px; }
       @media (prefers-color-scheme: dark) {
-          body, html { background: #121212; color: #e0e0e0; }
-          .card { background: #1e1e1e; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-          li { border-bottom-color: rgba(255,255,255,0.1); }
-          code { background: rgba(255,255,255,0.08); }
-          a:hover code { background: rgba(255,255,255,0.15); }
-          .group details li { border-bottom-color: rgba(255,255,255,0.08); }
+          body, html { background: #0f0f14; color: #e2e8f0; }
+          .card {
+              background: rgba(30,30,40,0.8); border-color: rgba(255,255,255,0.06);
+              box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+          }
+          li a { background: rgba(255,255,255,0.04); }
+          li a:hover { background: rgba(20,184,166,0.12); }
+          .empty-state { color: #94a3b8; }
+          .group summary { color: #94a3b8; }
+          .group summary:hover { background: rgba(255,255,255,0.04); }
       }
   </style>
 </head>
@@ -392,84 +474,145 @@ function getAdminHtml() {
     *, *::before, *::after { box-sizing: border-box; }
     body, html {
       height: 100%; margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #ffffff; color: #2c3e50;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5; color: #1a1a2e;
     }
     .wrap {
       min-height: 100%; display: flex; align-items: center; justify-content: center;
       padding: 24px;
     }
     .card {
-      width: 100%; max-width: 560px; padding: 32px 36px;
-      border-radius: 12px; background: #f7f7f8;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      width: 100%; max-width: 600px; padding: 40px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.8);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
     }
-    .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; }
-    .brand svg { width: 56px; height: 56px; }
-    .brand .name { margin-top: 8px; font-size: 0.9rem; font-weight: 300; letter-spacing: 0.25em; text-transform: uppercase; }
-    h2 { margin: 0 0 20px; font-size: 1.1rem; font-weight: 500; text-align: center; }
+    .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 32px; }
+    .brand svg { width: 48px; height: 48px; filter: drop-shadow(0 2px 8px rgba(20,184,166,0.3)); }
+    .brand .name {
+      margin-top: 10px; font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 0.3em; text-transform: uppercase; color: #14b8a6;
+    }
+    h2 { margin: 0; font-size: 1.05rem; font-weight: 600; color: #1a1a2e; }
 
     /* Login */
     #login-section { text-align: center; }
     #login-section input {
-      width: 100%; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.15);
-      border-radius: 8px; font-size: 0.95rem; margin-bottom: 12px;
-      background: #fff;
+      width: 100%; padding: 12px 16px;
+      border: 1.5px solid rgba(0,0,0,0.08); border-radius: 12px;
+      font-size: 0.95rem; margin-bottom: 16px;
+      background: rgba(255,255,255,0.6);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
     }
+    #login-section input:focus {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.12);
+    }
+
     /* Buttons */
     .btn {
-      padding: 8px 18px; border: none; border-radius: 8px;
-      font-size: 0.9rem; cursor: pointer; transition: background 0.15s;
+      padding: 10px 20px; border: none; border-radius: 10px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      transition: all 0.2s ease; outline: none;
     }
-    .btn-primary { background: #14b8a6; color: #fff; }
-    .btn-primary:hover { background: #0d9488; }
-    .btn-danger { background: #ef4444; color: #fff; }
-    .btn-danger:hover { background: #dc2626; }
-    .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
-    .btn-outline { background: transparent; border: 1px solid rgba(0,0,0,0.15); color: inherit; }
-    .btn-outline:hover { background: rgba(0,0,0,0.05); }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, #14b8a6, #0d9488); color: #fff;
+      box-shadow: 0 2px 8px rgba(20,184,166,0.3);
+    }
+    .btn-primary:hover { box-shadow: 0 4px 16px rgba(20,184,166,0.4); }
+    .btn-danger { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .btn-danger:hover { background: rgba(239,68,68,0.18); }
+    .btn-sm { padding: 6px 14px; font-size: 0.8rem; border-radius: 8px; }
+    .btn-ghost { background: transparent; color: #64748b; }
+    .btn-ghost:hover { background: rgba(0,0,0,0.04); color: #1a1a2e; }
+    .btn-edit { background: rgba(20,184,166,0.1); color: #0d9488; }
+    .btn-edit:hover { background: rgba(20,184,166,0.18); }
 
-    /* Routes table */
+    /* Admin section */
     #admin-section { display: none; }
-    .route-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    .route-table th, .route-table td {
-      text-align: left; padding: 8px 6px; font-size: 0.85rem;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
+    .admin-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 24px;
     }
-    .route-table th { opacity: 0.6; font-weight: 500; }
-    .route-table td.target { word-break: break-all; max-width: 260px; }
-    .route-table td code {
-      background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-size: 0.85em;
+
+    /* Route cards */
+    .routes-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .route-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: 12px;
+      background: rgba(0,0,0,0.025);
+      transition: background 0.15s;
     }
-    .empty-msg { text-align: center; padding: 20px 0; opacity: 0.5; font-size: 0.9rem; }
+    .route-card:hover { background: rgba(0,0,0,0.045); }
+    .route-info { flex: 1; min-width: 0; }
+    .route-path {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.875rem; font-weight: 600; color: #14b8a6;
+    }
+    .route-target {
+      font-size: 0.8rem; color: #64748b; margin-top: 3px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .route-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .empty-msg {
+      text-align: center; padding: 32px 0; color: #94a3b8; font-size: 0.9rem;
+    }
 
     /* Add form */
-    .add-form { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.08); }
+    .add-form {
+      display: flex; flex-direction: column; gap: 10px;
+      padding-top: 20px; border-top: 1.5px solid rgba(0,0,0,0.05);
+    }
     .add-form input {
-      width: 100%; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.15);
-      border-radius: 8px; font-size: 0.9rem; background: #fff;
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid rgba(0,0,0,0.08); border-radius: 10px;
+      font-size: 0.9rem; background: rgba(255,255,255,0.6);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .add-form input:focus {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.12);
     }
     .add-form .row { display: flex; gap: 10px; }
     .add-form .row input { flex: 1; }
 
+    /* Toast */
     .toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      padding: 10px 24px; border-radius: 8px; font-size: 0.9rem;
-      background: #1e1e1e; color: #fff; opacity: 0; transition: opacity 0.3s;
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(8px);
+      padding: 12px 28px; border-radius: 12px; font-size: 0.875rem; font-weight: 500;
+      background: #1a1a2e; color: #fff;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      opacity: 0; transition: all 0.3s ease;
       pointer-events: none; z-index: 99;
     }
-    .toast.show { opacity: 1; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     @media (prefers-color-scheme: dark) {
-      body, html { background: #121212; color: #e0e0e0; }
-      .card { background: #1e1e1e; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-      #login-section input, .add-form input { background: #2a2a2a; border-color: rgba(255,255,255,0.15); color: #e0e0e0; }
-      .route-table th, .route-table td { border-bottom-color: rgba(255,255,255,0.1); }
-      .route-table td code { background: rgba(255,255,255,0.08); }
-      .add-form { border-top-color: rgba(255,255,255,0.1); }
-      .toast { background: #f7f7f8; color: #2c3e50; }
-      .btn-outline { border-color: rgba(255,255,255,0.15); }
-      .btn-outline:hover { background: rgba(255,255,255,0.08); }
+      body, html { background: #0f0f14; color: #e2e8f0; }
+      .card {
+        background: rgba(30,30,40,0.8); border-color: rgba(255,255,255,0.06);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      }
+      h2 { color: #e2e8f0; }
+      #login-section input, .add-form input {
+        background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1);
+        color: #e2e8f0;
+      }
+      .route-card { background: rgba(255,255,255,0.04); }
+      .route-card:hover { background: rgba(255,255,255,0.07); }
+      .route-target { color: #94a3b8; }
+      .btn-ghost { color: #94a3b8; }
+      .btn-ghost:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+      .btn-danger { background: rgba(239,68,68,0.12); }
+      .btn-danger:hover { background: rgba(239,68,68,0.2); }
+      .btn-edit { background: rgba(20,184,166,0.12); }
+      .btn-edit:hover { background: rgba(20,184,166,0.2); }
+      .add-form { border-top-color: rgba(255,255,255,0.06); }
+      .toast { background: #e2e8f0; color: #0f0f14; }
     }
   </style>
 </head>
@@ -483,17 +626,16 @@ function getAdminHtml() {
 
       <!-- Login -->
       <div id="login-section">
-        <h2>Admin Login</h2>
+        <h2 style="text-align:center;margin-bottom:20px">Admin Login</h2>
         <input type="password" id="password-input" placeholder="Enter admin password" autofocus>
-        <br>
         <button class="btn btn-primary" onclick="doLogin()" style="width:100%">Login</button>
       </div>
 
       <!-- Admin Panel -->
       <div id="admin-section">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-          <h2 style="margin:0">Route Management</h2>
-          <button class="btn btn-outline btn-sm" onclick="doLogout()">Logout</button>
+        <div class="admin-header">
+          <h2>Route Management</h2>
+          <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
         </div>
         <div id="routes-list"></div>
         <div class="add-form">
@@ -510,7 +652,7 @@ function getAdminHtml() {
 
   <script>
     let token = sessionStorage.getItem('admin_token') || '';
-    const API = '/admin/api';
+    const API = '${ADMIN_API_PREFIX}';
 
     if (token) tryAutoLogin();
 
@@ -525,6 +667,7 @@ function getAdminHtml() {
       if (ok) {
         showAdmin();
       } else {
+        token = '';
         sessionStorage.removeItem('admin_token');
         toast('Password incorrect');
       }
@@ -532,7 +675,10 @@ function getAdminHtml() {
 
     async function tryAutoLogin() {
       if (await apiCheck()) showAdmin();
-      else sessionStorage.removeItem('admin_token');
+      else {
+        token = '';
+        sessionStorage.removeItem('admin_token');
+      }
     }
 
     function showAdmin() {
@@ -557,55 +703,73 @@ function getAdminHtml() {
     }
 
     async function loadRoutes() {
-      const r = await fetch(API + '/routes', { headers: { 'X-Admin-Token': token } });
-      const data = await r.json();
-      renderRoutes(data.routes || {});
+      try {
+        const r = await fetch(API + '/routes', { headers: { 'X-Admin-Token': token } });
+        const data = await r.json();
+
+        if (!r.ok) {
+          if (r.status === 401) doLogout();
+          toast(data.error || 'Failed to load routes');
+          return;
+        }
+
+        renderRoutes(data.routes || {});
+      } catch (_) {
+        toast('Failed to load routes');
+      }
     }
 
     function renderRoutes(routes) {
-      const entries = Object.entries(routes);
+      const entries = Object.entries(routes).sort(([a], [b]) => a.localeCompare(b));
       if (entries.length === 0) {
         document.getElementById('routes-list').innerHTML = '<div class="empty-msg">No routes configured</div>';
         return;
       }
       const container = document.getElementById('routes-list');
-      const table = document.createElement('table');
-      table.className = 'route-table';
-      table.innerHTML = '<thead><tr><th>Path</th><th>Target</th><th></th></tr></thead>';
-      const tbody = document.createElement('tbody');
+      const list = document.createElement('div');
+      list.className = 'routes-list';
 
       for (const [prefix, target] of entries) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td><code>' + escHtml(prefix) + '</code></td><td class="target">' + escHtml(target) + '</td><td style="white-space:nowrap"></td>';
+        const card = document.createElement('div');
+        card.className = 'route-card';
+        card.innerHTML = '<div class="route-info"><div class="route-path">' + escHtml(prefix) + '</div><div class="route-target" title="' + escHtml(target) + '">' + escHtml(target) + '</div></div><div class="route-actions"></div>';
         const editBtn = document.createElement('button');
-        editBtn.className = 'btn btn-outline btn-sm';
+        editBtn.className = 'btn btn-edit btn-sm';
         editBtn.textContent = 'Edit';
-        editBtn.style.marginRight = '6px';
         editBtn.addEventListener('click', () => editRoute(prefix, target));
         const delBtn = document.createElement('button');
         delBtn.className = 'btn btn-danger btn-sm';
         delBtn.textContent = 'Delete';
         delBtn.addEventListener('click', () => delRoute(prefix));
-        tr.lastChild.appendChild(editBtn);
-        tr.lastChild.appendChild(delBtn);
-        tbody.appendChild(tr);
+        const actions = card.querySelector('.route-actions');
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        list.appendChild(card);
       }
-      table.appendChild(tbody);
       container.innerHTML = '';
-      container.appendChild(table);
+      container.appendChild(list);
     }
 
-    function editRoute(prefix, target) {
+    async function editRoute(prefix, target) {
       const newTarget = prompt('Edit target URL for ' + prefix, target);
       if (newTarget === null || newTarget.trim() === '' || newTarget.trim() === target) return;
-      fetch(API + '/routes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
-        body: JSON.stringify({ prefix, target: newTarget.trim() }),
-      }).then(r => r.json()).then(data => {
-        if (data.ok) { renderRoutes(data.routes || {}); toast('Route updated'); }
-        else toast(data.error || 'Failed');
-      });
+      try {
+        const r = await fetch(API + '/routes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+          body: JSON.stringify({ prefix, target: newTarget.trim() }),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          renderRoutes(data.routes || {});
+          toast('Route updated');
+        } else {
+          if (r.status === 401) doLogout();
+          toast(data.error || 'Failed');
+        }
+      } catch (_) {
+        toast('Failed');
+      }
     }
 
     async function addRoute() {
@@ -624,6 +788,7 @@ function getAdminHtml() {
         renderRoutes(data.routes || {});
         toast('Route added');
       } else {
+        if (r.status === 401) doLogout();
         toast(data.error || 'Failed');
       }
     }
@@ -640,6 +805,7 @@ function getAdminHtml() {
         renderRoutes(data.routes || {});
         toast('Route deleted');
       } else {
+        if (r.status === 401) doLogout();
         toast(data.error || 'Failed');
       }
     }
