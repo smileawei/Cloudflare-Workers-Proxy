@@ -366,6 +366,7 @@ const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" 
 function getRootHtml(routes) {
   const routesHtml = renderRoutesList(routes);
   const favicon = `data:image/svg+xml,${encodeURIComponent(LOGO_SVG)}`;
+  const routeCount = Object.keys(routes).length;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -375,84 +376,346 @@ function getRootHtml(routes) {
   <link rel="icon" type="image/svg+xml" href="${favicon}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+      :root {
+          --bg: #07111d;
+          --card: rgba(8, 19, 31, 0.76);
+          --line: rgba(162, 184, 206, 0.18);
+          --text: #f3f7fb;
+          --muted: #9db0c5;
+          --accent: #5eead4;
+          --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+      }
       *, *::before, *::after { box-sizing: border-box; }
-      body, html {
-          height: 100%; margin: 0;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          background: #f0f2f5; color: #1a1a2e;
+      html, body { min-height: 100%; margin: 0; }
+      body {
+          font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+          color: var(--text);
+          background:
+            radial-gradient(circle at 12% 18%, rgba(94,234,212,0.18), transparent 28%),
+            radial-gradient(circle at 84% 12%, rgba(34,197,94,0.16), transparent 24%),
+            radial-gradient(circle at 50% 120%, rgba(59,130,246,0.18), transparent 42%),
+            linear-gradient(160deg, #06101a 0%, #091828 46%, #07111d 100%);
+      }
+      body::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+          background-size: 32px 32px;
+          mask-image: radial-gradient(circle at center, black 38%, transparent 88%);
+          opacity: 0.3;
       }
       .wrap {
-          min-height: 100%; display: flex; align-items: center; justify-content: center;
-          padding: 24px;
+          min-height: 100vh;
+          padding: 40px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
       }
-      .card {
-          width: 100%; max-width: 440px; padding: 40px;
-          border-radius: 20px;
-          background: rgba(255,255,255,0.7);
-          backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255,255,255,0.8);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      .shell {
+          width: min(1080px, 100%);
+          display: grid;
+          grid-template-columns: 1.05fr 0.95fr;
+          gap: 24px;
+          align-items: stretch;
       }
-      .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 28px; }
-      .brand svg { width: 72px; height: 72px; filter: drop-shadow(0 2px 8px rgba(20,184,166,0.3)); }
-      .brand .name {
-          margin-top: 12px; font-size: 0.85rem; font-weight: 600;
-          letter-spacing: 0.3em; text-transform: uppercase; color: #14b8a6;
+      .hero, .panel {
+          position: relative;
+          overflow: hidden;
+          border: 1px solid var(--line);
+          border-radius: 28px;
+          background: var(--card);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          box-shadow: 0 22px 70px rgba(0, 0, 0, 0.32);
+      }
+      .hero {
+          padding: 34px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 620px;
+      }
+      .hero::after, .panel::after {
+          content: '';
+          position: absolute;
+          inset: auto -80px -120px auto;
+          width: 240px;
+          height: 240px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(94,234,212,0.22) 0%, transparent 72%);
+          pointer-events: none;
+      }
+      .eyebrow {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(94,234,212,0.2);
+          background: rgba(255,255,255,0.04);
+          color: var(--accent);
+          font-size: 0.82rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+      }
+      .eyebrow::before {
+          content: '';
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: currentColor;
+          box-shadow: 0 0 0 8px rgba(94,234,212,0.12);
+      }
+      .brand {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-top: 18px;
+      }
+      .brand-mark {
+          width: 74px;
+          height: 74px;
+          padding: 14px;
+          display: grid;
+          place-items: center;
+          border-radius: 22px;
+          background: linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
+          border: 1px solid rgba(255,255,255,0.12);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.22);
+      }
+      .brand-mark svg { width: 100%; height: 100%; }
+      .brand-meta strong {
+          display: block;
+          font-size: clamp(2rem, 4vw, 3.4rem);
+          line-height: 0.95;
+          letter-spacing: -0.05em;
+      }
+      .brand-meta span {
+          display: block;
+          margin-top: 8px;
+          color: var(--muted);
+          font-size: 0.96rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+      }
+      .hero-copy h1 {
+          margin: 20px 0 14px;
+          max-width: 11ch;
+          font-size: clamp(2.2rem, 5vw, 4.8rem);
+          line-height: 0.95;
+          letter-spacing: -0.06em;
+      }
+      .hero-copy p {
+          margin: 0;
+          max-width: 42ch;
+          color: var(--muted);
+          font-size: 1.02rem;
+          line-height: 1.65;
+      }
+      .hero-stats {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+          margin-top: 28px;
+      }
+      .stat {
+          padding: 16px 18px;
+          border-radius: 18px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.08);
+      }
+      .stat strong {
+          display: block;
+          font-size: 1.6rem;
+          letter-spacing: -0.05em;
+      }
+      .stat span {
+          display: block;
+          margin-top: 6px;
+          color: var(--muted);
+          font-size: 0.82rem;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+      }
+      .hero-note {
+          margin-top: 24px;
+          padding: 18px 20px;
+          border-radius: 22px;
+          background: linear-gradient(140deg, rgba(94,234,212,0.12), rgba(255,255,255,0.04));
+          border: 1px solid rgba(94,234,212,0.16);
+          color: #d9f7f1;
+          line-height: 1.6;
+      }
+      .panel {
+          padding: 26px;
+      }
+      .panel-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 20px;
+      }
+      .panel-head h2 {
+          margin: 0;
+          font-size: 1.25rem;
+          letter-spacing: -0.03em;
+      }
+      .panel-head p {
+          margin: 4px 0 0;
+          color: var(--muted);
+          font-size: 0.92rem;
+      }
+      .pill {
+          padding: 9px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,0.05);
+          color: var(--text);
+          font-size: 0.82rem;
       }
       .empty-state {
-          text-align: center; color: #64748b; font-size: 0.95rem;
-          padding: 16px 8px;
+          padding: 28px 18px;
+          border-radius: 20px;
+          border: 1px dashed rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.03);
+          text-align: center;
+          color: var(--muted);
+          line-height: 1.7;
       }
-      ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
-      li a {
-          display: block; padding: 12px 16px; border-radius: 12px;
-          background: rgba(0,0,0,0.03); text-decoration: none; color: inherit;
-          transition: all 0.2s ease;
+      ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+      li a, .group summary {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          min-height: 60px;
+          padding: 14px 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.04);
+          color: inherit;
+          text-decoration: none;
+          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
       }
-      li a:hover { background: rgba(20,184,166,0.08); transform: translateX(4px); }
+      li a:hover, .group summary:hover {
+          transform: translateY(-2px);
+          border-color: rgba(94,234,212,0.28);
+          background: rgba(94,234,212,0.09);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+      }
+      li a::before {
+          content: '↗';
+          display: inline-grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          margin-right: 12px;
+          border-radius: 12px;
+          background: rgba(94,234,212,0.12);
+          color: var(--accent);
+          font-size: 0.95rem;
+      }
       li a code {
-          background: none; padding: 0; font-size: 0.9em;
-          font-family: 'SF Mono', 'Fira Code', monospace;
+          background: none;
+          padding: 0;
+          font-size: 0.94rem;
+          color: #eff8ff;
+          font-family: var(--mono);
       }
-      .group { padding: 0; }
-      .group > details { padding: 0; }
       .group summary {
-          list-style: none; cursor: pointer; padding: 10px 16px;
-          font-size: 0.9em; font-weight: 500; color: #64748b;
-          user-select: none; border-radius: 10px; transition: background 0.15s;
+          cursor: pointer;
+          color: #dce7f2;
+          user-select: none;
+          list-style: none;
       }
-      .group summary:hover { background: rgba(0,0,0,0.03); }
       .group summary::-webkit-details-marker { display: none; }
       .group summary::before {
-          content: ''; display: inline-block; width: 6px; height: 6px;
-          border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
-          transform: rotate(-45deg); margin-right: 10px;
-          transition: transform 0.2s ease;
+          content: '';
+          width: 8px;
+          height: 8px;
+          margin-right: 14px;
+          border-right: 2px solid currentColor;
+          border-bottom: 2px solid currentColor;
+          transform: rotate(-45deg);
+          transition: transform 0.18s ease;
+      }
+      .group summary::after {
+          content: 'Group';
+          margin-left: auto;
+          color: var(--muted);
+          font-size: 0.74rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
       }
       .group details[open] summary::before { transform: rotate(45deg); }
-      .group details ul { padding-left: 12px; margin-top: 4px; margin-bottom: 4px; }
-      @media (prefers-color-scheme: dark) {
-          body, html { background: #0f0f14; color: #e2e8f0; }
-          .card {
-              background: rgba(30,30,40,0.8); border-color: rgba(255,255,255,0.06);
-              box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-          }
-          li a { background: rgba(255,255,255,0.04); }
-          li a:hover { background: rgba(20,184,166,0.12); }
-          .empty-state { color: #94a3b8; }
-          .group summary { color: #94a3b8; }
-          .group summary:hover { background: rgba(255,255,255,0.04); }
+      .group details ul {
+          margin-top: 10px;
+          padding-left: 14px;
+          border-left: 1px solid rgba(255,255,255,0.08);
+      }
+      @media (max-width: 920px) {
+          .shell { grid-template-columns: 1fr; }
+          .hero { min-height: auto; }
+      }
+      @media (max-width: 640px) {
+          .wrap { padding: 20px 14px; }
+          .hero, .panel { padding: 22px; border-radius: 24px; }
+          .brand { align-items: flex-start; }
+          .brand-meta strong { font-size: 2rem; }
+          .hero-stats { grid-template-columns: 1fr; }
       }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <div class="brand">
-        ${LOGO_SVG}
-        <div class="name">Warp</div>
-      </div>
-      ${routesHtml}
+    <div class="shell">
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Edge Proxy Control</div>
+          <div class="hero-copy">
+            <div class="brand">
+              <div class="brand-mark">${LOGO_SVG}</div>
+              <div class="brand-meta">
+                <strong>Warp</strong>
+                <span>Cloudflare Route Fabric</span>
+              </div>
+            </div>
+            <h1>Proxy routes with a cleaner edge surface.</h1>
+            <p>Browse active prefixes, jump straight into routed endpoints, and keep the public landing page looking more like a control plane than a placeholder.</p>
+          </div>
+          <div class="hero-stats">
+            <div class="stat">
+              <strong>${routeCount}</strong>
+              <span>Active Routes</span>
+            </div>
+            <div class="stat">
+              <strong>KV</strong>
+              <span>Backed Config</span>
+            </div>
+            <div class="stat">
+              <strong>/admin</strong>
+              <span>Console Entry</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-note">
+          Routes are matched by longest prefix first. Use the admin console to add, replace, or remove upstream mappings without editing code.
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Published Prefixes</h2>
+            <p>Choose a route to open its proxied upstream.</p>
+          </div>
+          <div class="pill">${routeCount} route${routeCount === 1 ? '' : 's'}</div>
+        </div>
+        ${routesHtml}
+      </section>
     </div>
   </div>
 </body>
@@ -471,181 +734,481 @@ function getAdminHtml() {
   <link rel="icon" type="image/svg+xml" href="${favicon}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    :root {
+      --card: rgba(8, 18, 30, 0.8);
+      --line: rgba(160, 181, 203, 0.16);
+      --text: #f3f7fb;
+      --muted: #96abc0;
+      --accent: #5eead4;
+      --danger: #fb7185;
+      --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    }
     *, *::before, *::after { box-sizing: border-box; }
-    body, html {
-      height: 100%; margin: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f0f2f5; color: #1a1a2e;
+    html, body { min-height: 100%; margin: 0; }
+    body {
+      font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(94,234,212,0.16), transparent 28%),
+        radial-gradient(circle at 92% 18%, rgba(59,130,246,0.16), transparent 24%),
+        linear-gradient(160deg, #050c14 0%, #0a1320 44%, #08101a 100%);
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(circle at center, black 34%, transparent 82%);
+      opacity: 0.32;
     }
     .wrap {
-      min-height: 100%; display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+    }
+    .layout {
+      width: min(1200px, 100%);
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+    .rail, .card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 24px 70px rgba(0,0,0,0.32);
+    }
+    .rail {
       padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-height: 720px;
     }
     .card {
-      width: 100%; max-width: 600px; padding: 40px;
+      padding: 24px;
+      min-height: 720px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-mark {
+      width: 62px;
+      height: 62px;
+      display: grid;
+      place-items: center;
+      padding: 12px;
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .brand-mark svg { width: 100%; height: 100%; }
+    .brand-copy strong {
+      display: block;
+      font-size: 1.55rem;
+      letter-spacing: -0.04em;
+    }
+    .brand-copy span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .rail-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(94,234,212,0.22);
+      color: var(--accent);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .rail-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 8px rgba(94,234,212,0.12);
+    }
+    .rail h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 0.96;
+      letter-spacing: -0.06em;
+    }
+    .rail p, .section-copy {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.98rem;
+    }
+    .rail-stats {
+      display: grid;
+      gap: 12px;
+      margin-top: auto;
+    }
+    .stat-box, .metric {
+      padding: 16px;
       border-radius: 20px;
-      background: rgba(255,255,255,0.7);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.8);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
     }
-    .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 32px; }
-    .brand svg { width: 48px; height: 48px; filter: drop-shadow(0 2px 8px rgba(20,184,166,0.3)); }
-    .brand .name {
-      margin-top: 10px; font-size: 0.8rem; font-weight: 600;
-      letter-spacing: 0.3em; text-transform: uppercase; color: #14b8a6;
+    .stat-box strong, .metric strong {
+      display: block;
+      font-size: 1.45rem;
+      letter-spacing: -0.04em;
     }
-    h2 { margin: 0; font-size: 1.05rem; font-weight: 600; color: #1a1a2e; }
-
-    /* Login */
-    #login-section { text-align: center; }
-    #login-section input {
-      width: 100%; padding: 12px 16px;
-      border: 1.5px solid rgba(0,0,0,0.08); border-radius: 12px;
-      font-size: 0.95rem; margin-bottom: 16px;
-      background: rgba(255,255,255,0.6);
-      transition: border-color 0.2s, box-shadow 0.2s;
+    .stat-box span, .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .surface {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      height: 100%;
+    }
+    .panel {
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      padding: 22px;
+    }
+    .login-shell {
+      max-width: 520px;
+      margin: auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .login-shell .title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 1.3rem;
+      letter-spacing: -0.04em;
+      color: var(--text);
+    }
+    .mini-pill {
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(94,234,212,0.08);
+      border: 1px solid rgba(94,234,212,0.2);
+      color: var(--accent);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .field-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #dbe8f4;
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .text-input {
+      width: 100%;
+      min-height: 52px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
       outline: none;
+      font: inherit;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     }
-    #login-section input:focus {
-      border-color: #14b8a6;
-      box-shadow: 0 0 0 3px rgba(20,184,166,0.12);
+    .text-input::placeholder { color: #7290ad; }
+    .text-input:focus {
+      border-color: rgba(94,234,212,0.32);
+      box-shadow: 0 0 0 4px rgba(94,234,212,0.1);
+      background: rgba(255,255,255,0.06);
     }
-
-    /* Buttons */
     .btn {
-      padding: 10px 20px; border: none; border-radius: 10px;
-      font-size: 0.875rem; font-weight: 500; cursor: pointer;
-      transition: all 0.2s ease; outline: none;
+      min-height: 46px;
+      padding: 0 16px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
     }
-    .btn:active { transform: scale(0.97); }
+    .btn:hover { transform: translateY(-1px); }
     .btn-primary {
-      background: linear-gradient(135deg, #14b8a6, #0d9488); color: #fff;
-      box-shadow: 0 2px 8px rgba(20,184,166,0.3);
+      color: #042018;
+      background: linear-gradient(135deg, #5eead4, #86efac);
+      box-shadow: 0 12px 28px rgba(94,234,212,0.18);
     }
-    .btn-primary:hover { box-shadow: 0 4px 16px rgba(20,184,166,0.4); }
-    .btn-danger { background: rgba(239,68,68,0.1); color: #ef4444; }
-    .btn-danger:hover { background: rgba(239,68,68,0.18); }
-    .btn-sm { padding: 6px 14px; font-size: 0.8rem; border-radius: 8px; }
-    .btn-ghost { background: transparent; color: #64748b; }
-    .btn-ghost:hover { background: rgba(0,0,0,0.04); color: #1a1a2e; }
-    .btn-edit { background: rgba(20,184,166,0.1); color: #0d9488; }
-    .btn-edit:hover { background: rgba(20,184,166,0.18); }
-
-    /* Admin section */
+    .btn-ghost {
+      color: var(--muted);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-edit {
+      color: var(--accent);
+      background: rgba(94,234,212,0.08);
+      border: 1px solid rgba(94,234,212,0.18);
+    }
+    .btn-danger {
+      color: #ffdce2;
+      background: rgba(251,113,133,0.1);
+      border: 1px solid rgba(251,113,133,0.16);
+    }
+    .btn-sm {
+      min-height: 38px;
+      padding: 0 13px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+    }
     #admin-section { display: none; }
     .admin-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
     }
-
-    /* Route cards */
-    .routes-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .admin-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .routes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
     .route-card {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 16px; border-radius: 12px;
-      background: rgba(0,0,0,0.025);
-      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.035);
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
     }
-    .route-card:hover { background: rgba(0,0,0,0.045); }
+    .route-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(94,234,212,0.22);
+      background: rgba(94,234,212,0.06);
+    }
+    .route-icon {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: rgba(94,234,212,0.1);
+      color: var(--accent);
+      font-size: 1rem;
+      flex: 0 0 auto;
+    }
     .route-info { flex: 1; min-width: 0; }
     .route-path {
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 0.875rem; font-weight: 600; color: #14b8a6;
+      font-family: var(--mono);
+      font-size: 0.94rem;
+      font-weight: 700;
+      color: #ecfdf5;
     }
     .route-target {
-      font-size: 0.8rem; color: #64748b; margin-top: 3px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .route-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .route-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
     .empty-msg {
-      text-align: center; padding: 32px 0; color: #94a3b8; font-size: 0.9rem;
+      padding: 34px 20px;
+      border-radius: 22px;
+      border: 1px dashed rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
     }
-
-    /* Add form */
-    .add-form {
-      display: flex; flex-direction: column; gap: 10px;
-      padding-top: 20px; border-top: 1.5px solid rgba(0,0,0,0.05);
+    .add-form { display: grid; gap: 16px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
     }
-    .add-form input {
-      width: 100%; padding: 10px 14px;
-      border: 1.5px solid rgba(0,0,0,0.08); border-radius: 10px;
-      font-size: 0.9rem; background: rgba(255,255,255,0.6);
-      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
     }
-    .add-form input:focus {
-      border-color: #14b8a6;
-      box-shadow: 0 0 0 3px rgba(20,184,166,0.12);
-    }
-    .add-form .row { display: flex; gap: 10px; }
-    .add-form .row input { flex: 1; }
-
-    /* Toast */
     .toast {
-      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(8px);
-      padding: 12px 28px; border-radius: 12px; font-size: 0.875rem; font-weight: 500;
-      background: #1a1a2e; color: #fff;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      opacity: 0; transition: all 0.3s ease;
-      pointer-events: none; z-index: 99;
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(10px);
+      padding: 13px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(9,20,32,0.92);
+      color: var(--text);
+      box-shadow: 0 18px 36px rgba(0,0,0,0.28);
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+      z-index: 99;
     }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    @media (prefers-color-scheme: dark) {
-      body, html { background: #0f0f14; color: #e2e8f0; }
-      .card {
-        background: rgba(30,30,40,0.8); border-color: rgba(255,255,255,0.06);
-        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      }
-      h2 { color: #e2e8f0; }
-      #login-section input, .add-form input {
-        background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1);
-        color: #e2e8f0;
-      }
-      .route-card { background: rgba(255,255,255,0.04); }
-      .route-card:hover { background: rgba(255,255,255,0.07); }
-      .route-target { color: #94a3b8; }
-      .btn-ghost { color: #94a3b8; }
-      .btn-ghost:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
-      .btn-danger { background: rgba(239,68,68,0.12); }
-      .btn-danger:hover { background: rgba(239,68,68,0.2); }
-      .btn-edit { background: rgba(20,184,166,0.12); }
-      .btn-edit:hover { background: rgba(20,184,166,0.2); }
-      .add-form { border-top-color: rgba(255,255,255,0.06); }
-      .toast { background: #e2e8f0; color: #0f0f14; }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .rail, .card { min-height: auto; }
+      .rail-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .wrap { padding: 16px; }
+      .rail, .card { padding: 18px; border-radius: 24px; }
+      .admin-header { flex-direction: column; }
+      .admin-meta, .form-grid, .rail-stats { grid-template-columns: 1fr; }
+      .route-card { flex-direction: column; align-items: flex-start; }
+      .route-actions { width: 100%; justify-content: flex-end; }
+      .login-shell .title { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <div class="brand">
-        ${LOGO_SVG}
-        <div class="name">Warp</div>
-      </div>
-
-      <!-- Login -->
-      <div id="login-section">
-        <h2 style="text-align:center;margin-bottom:20px">Admin Login</h2>
-        <input type="password" id="password-input" placeholder="Enter admin password" autofocus>
-        <button class="btn btn-primary" onclick="doLogin()" style="width:100%">Login</button>
-      </div>
-
-      <!-- Admin Panel -->
-      <div id="admin-section">
-        <div class="admin-header">
-          <h2>Route Management</h2>
-          <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
-        </div>
-        <div id="routes-list"></div>
-        <div class="add-form">
-          <div class="row">
-            <input type="text" id="add-prefix" placeholder="Path, e.g. /api/data">
-            <input type="text" id="add-target" placeholder="Target URL">
+    <div class="layout">
+      <aside class="rail">
+        <div class="rail-badge">Admin Console</div>
+        <div class="brand">
+          <div class="brand-mark">${LOGO_SVG}</div>
+          <div class="brand-copy">
+            <strong>Warp</strong>
+            <span>Routing Surface</span>
           </div>
-          <button class="btn btn-primary" onclick="addRoute()" style="align-self:flex-end">Add Route</button>
         </div>
-      </div>
+        <h1>Operate routes like a small edge control plane.</h1>
+        <p>Manage prefix mappings, verify login state, and keep the proxy surface coherent without dropping into code for every route change.</p>
+        <div class="rail-stats">
+          <div class="stat-box">
+            <strong id="stat-routes">0</strong>
+            <span>Routes Loaded</span>
+          </div>
+          <div class="stat-box">
+            <strong>KV</strong>
+            <span>Persistent Store</span>
+          </div>
+          <div class="stat-box">
+            <strong>Live</strong>
+            <span>Edge Updates</span>
+          </div>
+        </div>
+      </aside>
+      <main class="card">
+        <div class="surface">
+          <div id="login-section" class="login-shell">
+            <div class="title">
+              <div>
+                <h2>Unlock Admin Access</h2>
+                <p class="section-copy">Authenticate with the configured admin password to view and modify route mappings.</p>
+              </div>
+              <div class="mini-pill">Protected</div>
+            </div>
+            <div class="panel">
+              <label class="field-label" for="password-input">Admin Password</label>
+              <input class="text-input" type="password" id="password-input" placeholder="Enter admin password" autofocus>
+              <div style="margin-top:14px">
+                <button class="btn btn-primary" onclick="doLogin()" style="width:100%">Enter Console</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="admin-section">
+            <div class="admin-header">
+              <div>
+                <h2>Route Management</h2>
+                <p class="section-copy">Review active route prefixes, adjust upstream targets, and publish changes instantly.</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
+            </div>
+            <div class="admin-meta">
+              <div class="metric">
+                <strong id="meta-route-count">0</strong>
+                <span>Total Routes</span>
+              </div>
+              <div class="metric">
+                <strong>Prefix</strong>
+                <span>Longest Match</span>
+              </div>
+              <div class="metric">
+                <strong>/admin</strong>
+                <span>Secure Entry</span>
+              </div>
+            </div>
+            <div class="panel">
+              <div id="routes-list"></div>
+            </div>
+            <div class="panel">
+              <div style="margin-bottom:16px">
+                <h2 style="font-size:1.05rem">Add or Replace Route</h2>
+                <p class="section-copy">Use a prefix like <code style="font-family:var(--mono)">/api</code> and a full upstream URL.</p>
+              </div>
+              <div class="add-form">
+                <div class="form-grid">
+                  <div>
+                    <label class="field-label" for="add-prefix">Route Prefix</label>
+                    <input class="text-input" type="text" id="add-prefix" placeholder="/api/data">
+                  </div>
+                  <div>
+                    <label class="field-label" for="add-target">Target URL</label>
+                    <input class="text-input" type="text" id="add-target" placeholder="https://example.com/data">
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-primary" onclick="addRoute()">Save Route</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   </div>
   <div class="toast" id="toast"></div>
@@ -721,8 +1284,11 @@ function getAdminHtml() {
 
     function renderRoutes(routes) {
       const entries = Object.entries(routes).sort(([a], [b]) => a.localeCompare(b));
+      const routeCount = entries.length;
+      document.getElementById('stat-routes').textContent = routeCount;
+      document.getElementById('meta-route-count').textContent = routeCount;
       if (entries.length === 0) {
-        document.getElementById('routes-list').innerHTML = '<div class="empty-msg">No routes configured</div>';
+        document.getElementById('routes-list').innerHTML = '<div class="empty-msg">No routes configured yet.<br>Add your first prefix below to publish it to the edge.</div>';
         return;
       }
       const container = document.getElementById('routes-list');
@@ -732,7 +1298,7 @@ function getAdminHtml() {
       for (const [prefix, target] of entries) {
         const card = document.createElement('div');
         card.className = 'route-card';
-        card.innerHTML = '<div class="route-info"><div class="route-path">' + escHtml(prefix) + '</div><div class="route-target" title="' + escHtml(target) + '">' + escHtml(target) + '</div></div><div class="route-actions"></div>';
+        card.innerHTML = '<div class="route-icon">↗</div><div class="route-info"><div class="route-path">' + escHtml(prefix) + '</div><div class="route-target" title="' + escHtml(target) + '">' + escHtml(target) + '</div></div><div class="route-actions"></div>';
         const editBtn = document.createElement('button');
         editBtn.className = 'btn btn-edit btn-sm';
         editBtn.textContent = 'Edit';
