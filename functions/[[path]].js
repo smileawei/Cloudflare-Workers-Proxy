@@ -15,19 +15,24 @@ export async function onRequest(context) {
   return handleRequest(context.request, context.env);
 }
 
-// 从 KV 加载路由，合并默认路由（KV 优先）
-async function loadRoutes(env) {
+// 从 KV 加载自定义路由（不含默认路由）
+async function loadKvRoutes(env) {
   if (env?.ROUTES_KV) {
     try {
-      const data = await env.ROUTES_KV.get('routes', 'json');
-      if (data) return { ...DEFAULT_ROUTES, ...data };
+      return (await env.ROUTES_KV.get('routes', 'json')) || {};
     } catch (_) {}
   }
-  return { ...DEFAULT_ROUTES };
+  return {};
 }
 
-// 保存路由到 KV
-async function saveRoutes(env, routes) {
+// 合并默认路由和 KV 路由（KV 优先）
+async function loadAllRoutes(env) {
+  const kvRoutes = await loadKvRoutes(env);
+  return { ...DEFAULT_ROUTES, ...kvRoutes };
+}
+
+// 保存自定义路由到 KV（只存 KV 自己的，不含默认路由）
+async function saveKvRoutes(env, routes) {
   if (!env?.ROUTES_KV) {
     throw new Error('KV namespace ROUTES_KV not bound');
   }
@@ -56,7 +61,7 @@ async function handleRequest(request, env) {
       return handleAdminApi(request, url, env);
     }
 
-    const routes = await loadRoutes(env);
+    const routes = await loadAllRoutes(env);
 
     // 根路径返回可用路由列表
     if (url.pathname === '/' || url.pathname === '') {
@@ -123,8 +128,8 @@ async function handleAdminApi(request, url, env) {
   const path = url.pathname.replace('/admin/api', '');
 
   if (path === '/routes' && request.method === 'GET') {
-    const routes = await loadRoutes(env);
-    return jsonResponse(routes, 200);
+    const kvRoutes = await loadKvRoutes(env);
+    return jsonResponse({ defaults: DEFAULT_ROUTES, custom: kvRoutes }, 200);
   }
 
   if (path === '/routes' && request.method === 'POST') {
@@ -135,10 +140,10 @@ async function handleAdminApi(request, url, env) {
     if (!prefix.startsWith('/')) {
       return jsonResponse({ error: 'prefix must start with /' }, 400);
     }
-    const routes = await loadRoutes(env);
-    routes[prefix] = target;
-    await saveRoutes(env, routes);
-    return jsonResponse({ ok: true, routes }, 200);
+    const kvRoutes = await loadKvRoutes(env);
+    kvRoutes[prefix] = target;
+    await saveKvRoutes(env, kvRoutes);
+    return jsonResponse({ ok: true, defaults: DEFAULT_ROUTES, custom: kvRoutes }, 200);
   }
 
   if (path === '/routes' && request.method === 'DELETE') {
@@ -146,10 +151,10 @@ async function handleAdminApi(request, url, env) {
     if (!prefix) {
       return jsonResponse({ error: 'prefix is required' }, 400);
     }
-    const routes = await loadRoutes(env);
-    delete routes[prefix];
-    await saveRoutes(env, routes);
-    return jsonResponse({ ok: true, routes }, 200);
+    const kvRoutes = await loadKvRoutes(env);
+    delete kvRoutes[prefix];
+    await saveKvRoutes(env, kvRoutes);
+    return jsonResponse({ ok: true, defaults: DEFAULT_ROUTES, custom: kvRoutes }, 200);
   }
 
   if (path === '/check' && request.method === 'GET') {
@@ -245,16 +250,23 @@ function groupRoutes(routes) {
   return { rootItems, groups };
 }
 
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function renderRoutesList(routes) {
   const { rootItems, groups } = groupRoutes(routes);
-  const liFor = p => `<li><a href="${p}"><code>${p}</code></a></li>`;
+  const liFor = p => {
+    const safe = escapeHtml(p);
+    return `<li><a href="${safe}"><code>${safe}</code></a></li>`;
+  };
 
   const rootHtml = rootItems.map(liFor).join('');
 
   const groupsHtml = Object.entries(groups)
     .map(([name, items]) => {
       const inner = items.map(liFor).join('');
-      return `<li class="group"><details><summary>${name}/</summary><ul>${inner}</ul></details></li>`;
+      return `<li class="group"><details><summary>${escapeHtml(name)}/</summary><ul>${inner}</ul></details></li>`;
     })
     .join('');
 
@@ -549,25 +561,41 @@ function getAdminHtml() {
 
     async function loadRoutes() {
       const r = await fetch(API + '/routes', { headers: { 'X-Admin-Token': token } });
-      const routes = await r.json();
-      renderRoutes(routes);
+      const data = await r.json();
+      renderRoutes(data.defaults || {}, data.custom || {});
     }
 
-    function renderRoutes(routes) {
-      const entries = Object.entries(routes);
-      if (entries.length === 0) {
+    function renderRoutes(defaults, custom) {
+      const defEntries = Object.entries(defaults);
+      const customEntries = Object.entries(custom);
+      if (defEntries.length === 0 && customEntries.length === 0) {
         document.getElementById('routes-list').innerHTML = '<div class="empty-msg">No routes configured</div>';
         return;
       }
-      let html = '<table class="route-table"><thead><tr><th>Path</th><th>Target</th><th></th></tr></thead><tbody>';
-      for (const [prefix, target] of entries) {
-        const safePrefix = escHtml(prefix);
-        const safeTarget = escHtml(target);
-        html += '<tr><td><code>' + safePrefix + '</code></td><td class="target">' + safeTarget + '</td>'
-              + '<td><button class="btn btn-danger btn-sm" onclick="delRoute(\\'' + safePrefix.replace(/'/g, "\\\\'") + '\\')">Delete</button></td></tr>';
+      const container = document.getElementById('routes-list');
+      const table = document.createElement('table');
+      table.className = 'route-table';
+      table.innerHTML = '<thead><tr><th>Path</th><th>Target</th><th></th></tr></thead>';
+      const tbody = document.createElement('tbody');
+
+      for (const [prefix, target] of defEntries) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><code>' + escHtml(prefix) + '</code></td><td class="target">' + escHtml(target) + '</td><td><span style="opacity:0.4;font-size:0.8em">built-in</span></td>';
+        tbody.appendChild(tr);
       }
-      html += '</tbody></table>';
-      document.getElementById('routes-list').innerHTML = html;
+      for (const [prefix, target] of customEntries) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><code>' + escHtml(prefix) + '</code></td><td class="target">' + escHtml(target) + '</td><td></td>';
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-danger btn-sm';
+        btn.textContent = 'Delete';
+        btn.addEventListener('click', () => delRoute(prefix));
+        tr.lastChild.appendChild(btn);
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      container.innerHTML = '';
+      container.appendChild(table);
     }
 
     async function addRoute() {
@@ -583,7 +611,7 @@ function getAdminHtml() {
       if (data.ok) {
         document.getElementById('add-prefix').value = '';
         document.getElementById('add-target').value = '';
-        renderRoutes(data.routes);
+        renderRoutes(data.defaults || {}, data.custom || {});
         toast('Route added');
       } else {
         toast(data.error || 'Failed');
@@ -599,7 +627,7 @@ function getAdminHtml() {
       });
       const data = await r.json();
       if (data.ok) {
-        renderRoutes(data.routes);
+        renderRoutes(data.defaults || {}, data.custom || {});
         toast('Route deleted');
       } else {
         toast(data.error || 'Failed');
@@ -607,7 +635,7 @@ function getAdminHtml() {
     }
 
     function escHtml(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
     function toast(msg) {
