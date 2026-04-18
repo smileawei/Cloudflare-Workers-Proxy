@@ -5,11 +5,15 @@ export async function onRequest(context) {
   return handleRequest(context.request, context.env);
 }
 
+const ROUTES_KV_KEY = 'routes';
+const ADMIN_API_PREFIX = '/admin/api';
+
 // 从 KV 加载路由
 async function loadRoutes(env) {
   if (env?.ROUTES_KV) {
     try {
-      return (await env.ROUTES_KV.get('routes', 'json')) || {};
+      const routes = await env.ROUTES_KV.get(ROUTES_KV_KEY, 'json');
+      return isPlainObject(routes) ? routes : {};
     } catch (_) {}
   }
   return {};
@@ -20,7 +24,7 @@ async function saveRoutes(env, routes) {
   if (!env?.ROUTES_KV) {
     throw new Error('KV namespace ROUTES_KV not bound');
   }
-  await env.ROUTES_KV.put('routes', JSON.stringify(routes));
+  await env.ROUTES_KV.put(ROUTES_KV_KEY, JSON.stringify(routes));
 }
 
 // 验证管理员密码
@@ -41,7 +45,7 @@ async function handleRequest(request, env) {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
     }
-    if (url.pathname.startsWith('/admin/api/')) {
+    if (url.pathname === ADMIN_API_PREFIX || url.pathname.startsWith(ADMIN_API_PREFIX + '/')) {
       return handleAdminApi(request, url, env);
     }
 
@@ -63,9 +67,9 @@ async function handleRequest(request, env) {
     const { prefix, target } = match;
 
     const remaining = url.pathname.slice(prefix.length);
-    const actualUrlStr = target + remaining + url.search;
+    const actualUrlStr = buildTargetUrl(target, remaining, url.search);
 
-    const newHeaders = filterHeaders(request.headers, name => !name.startsWith('cf-'));
+    const newHeaders = filterHeaders(request.headers, name => !name.startsWith('cf-') && name !== 'host');
 
     const modifiedRequest = new Request(actualUrlStr, {
       headers: newHeaders,
@@ -109,7 +113,7 @@ async function handleAdminApi(request, url, env) {
     return jsonResponse({ error: 'Unauthorized' }, 401);
   }
 
-  const path = url.pathname.replace('/admin/api', '');
+  const path = url.pathname.replace(ADMIN_API_PREFIX, '') || '/';
 
   if (path === '/routes' && request.method === 'GET') {
     const routes = await loadRoutes(env);
@@ -117,13 +121,17 @@ async function handleAdminApi(request, url, env) {
   }
 
   if (path === '/routes' && request.method === 'POST') {
-    const { prefix, target } = await request.json();
+    const payload = await readJson(request);
+    const normalized = normalizeRouteInput(payload);
+    if ('error' in normalized) {
+      return jsonResponse({ error: normalized.error }, 400);
+    }
+
+    const { prefix, target } = normalized;
     if (!prefix || !target) {
       return jsonResponse({ error: 'prefix and target are required' }, 400);
     }
-    if (!prefix.startsWith('/')) {
-      return jsonResponse({ error: 'prefix must start with /' }, 400);
-    }
+
     const routes = await loadRoutes(env);
     routes[prefix] = target;
     await saveRoutes(env, routes);
@@ -131,9 +139,10 @@ async function handleAdminApi(request, url, env) {
   }
 
   if (path === '/routes' && request.method === 'DELETE') {
-    const { prefix } = await request.json();
-    if (!prefix) {
-      return jsonResponse({ error: 'prefix is required' }, 400);
+    const payload = await readJson(request);
+    const prefix = normalizePrefix(payload?.prefix);
+    if (!prefix || prefix === '/') {
+      return jsonResponse({ error: 'valid prefix is required' }, 400);
     }
     const routes = await loadRoutes(env);
     delete routes[prefix];
@@ -151,8 +160,8 @@ async function handleAdminApi(request, url, env) {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
   };
 }
 
@@ -169,6 +178,24 @@ function matchRoute(pathname, routes) {
   return best;
 }
 
+function buildTargetUrl(target, remainingPath, search) {
+  const base = new URL(target);
+  const normalizedRemaining = remainingPath || '';
+
+  if (normalizedRemaining) {
+    base.pathname = joinUrlPaths(base.pathname, normalizedRemaining);
+  }
+
+  base.search = search || '';
+  return base.toString();
+}
+
+function joinUrlPaths(basePath, appendedPath) {
+  const left = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+  const right = appendedPath.startsWith('/') ? appendedPath : `/${appendedPath}`;
+  return `${left}${right}` || '/';
+}
+
 function handleRedirect(response, prefix, target) {
   const location = response.headers.get('location');
   if (!location) return response;
@@ -177,7 +204,7 @@ function handleRedirect(response, prefix, target) {
   try {
     const locUrl = new URL(location, target);
     if (locUrl.origin === new URL(target).origin) {
-      modifiedLocation = prefix + locUrl.pathname + locUrl.search + locUrl.hash;
+      modifiedLocation = mapLocationToProxyPath(locUrl, prefix, target);
     }
   } catch (_) {}
 
@@ -190,10 +217,25 @@ function handleRedirect(response, prefix, target) {
   });
 }
 
+function mapLocationToProxyPath(locUrl, prefix, target) {
+  const targetUrl = new URL(target);
+  const targetPath = targetUrl.pathname === '/' ? '' : targetUrl.pathname.replace(/\/$/, '');
+  let remainder = locUrl.pathname;
+
+  if (targetPath && remainder.startsWith(targetPath + '/')) {
+    remainder = remainder.slice(targetPath.length);
+  } else if (targetPath && remainder === targetPath) {
+    remainder = '';
+  }
+
+  return `${prefix}${remainder}${locUrl.search}${locUrl.hash}` || '/';
+}
+
 async function handleHtmlContent(response, prefix) {
   const originalText = await response.text();
-  const regex = /((?:href|src|action)=["'])\/(?!\/)/g;
-  return originalText.replace(regex, `$1${prefix}/`);
+  const normalizedPrefix = prefix === '/' ? '' : prefix;
+  const regex = /((?:href|src|action)=["'])\/(?!\/)/gi;
+  return originalText.replace(regex, `$1${normalizedPrefix}/`);
 }
 
 function jsonResponse(data, status) {
@@ -216,8 +258,67 @@ function setNoCacheHeaders(headers) {
 
 function setCorsHeaders(headers) {
   headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-  headers.set('Access-Control-Allow-Headers', '*');
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizePrefix(input) {
+  if (typeof input !== 'string') return '';
+
+  const trimmed = input.trim();
+  if (!trimmed.startsWith('/')) return '';
+  if (trimmed.includes('://')) return '';
+
+  const collapsed = trimmed.replace(/\/{2,}/g, '/');
+  if (collapsed === '/') return '/';
+  return collapsed.endsWith('/') ? collapsed.slice(0, -1) : collapsed;
+}
+
+function normalizeTarget(input) {
+  if (typeof input !== 'string') return '';
+
+  const trimmed = input.trim();
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, url.pathname === '/' ? '' : '/');
+  } catch (_) {
+    return '';
+  }
+}
+
+function normalizeRouteInput(payload) {
+  const prefix = normalizePrefix(payload?.prefix);
+  const target = normalizeTarget(payload?.target);
+
+  if (!prefix) {
+    return { error: 'prefix must start with / and be a valid path' };
+  }
+
+  if (prefix === '/admin' || prefix.startsWith('/admin/')) {
+    return { error: 'prefix cannot use the reserved /admin path' };
+  }
+
+  if (!target) {
+    return { error: 'target must be a valid http(s) URL' };
+  }
+
+  return { prefix, target };
+}
+
+async function readJson(request) {
+  try {
+    return await request.json();
+  } catch (_) {
+    return null;
+  }
 }
 
 function groupRoutes(routes) {
@@ -248,11 +349,16 @@ function renderRoutesList(routes) {
   const rootHtml = rootItems.map(liFor).join('');
 
   const groupsHtml = Object.entries(groups)
+    .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, items]) => {
-      const inner = items.map(liFor).join('');
+      const inner = items.sort().map(liFor).join('');
       return `<li class="group"><details><summary>${escapeHtml(name)}/</summary><ul>${inner}</ul></details></li>`;
     })
     .join('');
+
+  if (!rootHtml && !groupsHtml) {
+    return '<div class="empty-state">No routes configured yet</div>';
+  }
 
   return `<ul>${rootHtml}${groupsHtml}</ul>`;
 }
@@ -927,7 +1033,7 @@ function getAdminHtml() {
 
   <script>
     let token = sessionStorage.getItem('admin_token') || '';
-    const API = '/admin/api';
+    const API = '${ADMIN_API_PREFIX}';
 
     if (token) tryAutoLogin();
 
