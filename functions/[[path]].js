@@ -343,24 +343,24 @@ function renderRoutesList(routes) {
   const { rootItems, groups } = groupRoutes(routes);
   const liFor = p => {
     const safe = escapeHtml(p);
-    return `<li><a href="${safe}"><code>${safe}</code></a></li>`;
+    return `<li><a href="${safe}"><span class="path">${safe}</span></a></li>`;
   };
 
-  const rootHtml = rootItems.map(liFor).join('');
+  const rootHtml = rootItems.sort().map(liFor).join('');
 
   const groupsHtml = Object.entries(groups)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, items]) => {
       const inner = items.sort().map(liFor).join('');
-      return `<li class="group"><details><summary>${escapeHtml(name)}/</summary><ul>${inner}</ul></details></li>`;
+      return `<li class="group"><details><summary><span class="path">${escapeHtml(name)}/</span><span class="count">${items.length}</span></summary><ul>${inner}</ul></details></li>`;
     })
     .join('');
 
   if (!rootHtml && !groupsHtml) {
-    return '<div class="empty-state">No routes configured yet</div>';
+    return '<div class="empty">No routes yet</div>';
   }
 
-  return `<ul>${rootHtml}${groupsHtml}</ul>`;
+  return `<ul class="routes">${rootHtml}${groupsHtml}</ul>`;
 }
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none"><style>.a{fill:#2c3e50}@media(prefers-color-scheme:dark){.a{fill:#e0e0e0}}</style><path class="a" d="M16 54 L46 54 L46 42 L66 64 L46 86 L46 74 L16 74 Z"/><ellipse cx="68" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5" stroke-opacity="0.55"/><ellipse cx="56" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5"/><path class="a" d="M78 58 L88 58 L88 48 L104 64 L88 80 L88 70 L78 70 Z"/></svg>`;
@@ -378,259 +378,184 @@ function getRootHtml(routes) {
   <link rel="icon" type="image/svg+xml" href="${favicon}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    :root {
+      --bg: #ffffff;
+      --text: #09090b;
+      --muted: #71717a;
+      --subtle: #a1a1aa;
+      --border: #e4e4e7;
+      --hover: #f4f4f5;
+      --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
       :root {
-          --bg: #f4f7fb;
-          --card: rgba(255, 255, 255, 0.88);
-          --line: rgba(15, 23, 42, 0.08);
-          --text: #0f172a;
-          --muted: #64748b;
-          --accent: #0f766e;
-          --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+        --bg: #0a0a0a;
+        --text: #fafafa;
+        --muted: #a1a1aa;
+        --subtle: #52525b;
+        --border: #27272a;
+        --hover: #18181b;
       }
-      *, *::before, *::after { box-sizing: border-box; }
-      html, body { min-height: 100%; margin: 0; }
-      body {
-          font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-          color: var(--text);
-          background:
-            radial-gradient(circle at top, rgba(15,118,110,0.08), transparent 36%),
-            linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
-      }
-      .wrap {
-          min-height: 100vh;
-          padding: 28px 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-      }
-      .shell {
-          width: min(760px, 100%);
-          border: 1px solid var(--line);
-          border-radius: 28px;
-          background: var(--card);
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
-          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
-          padding: 28px;
-      }
-      .brand {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-      }
-      .brand-mark {
-          width: 56px;
-          height: 56px;
-          padding: 12px;
-          display: grid;
-          place-items: center;
-          border-radius: 18px;
-          background: rgba(15,118,110,0.08);
-          border: 1px solid rgba(15,118,110,0.12);
-      }
-      .brand-mark svg { width: 100%; height: 100%; }
-      .brand-meta strong {
-          display: block;
-          font-size: clamp(1.8rem, 4vw, 2.6rem);
-          line-height: 1;
-          letter-spacing: -0.04em;
-      }
-      .brand-meta span {
-          display: block;
-          margin-top: 6px;
-          color: var(--muted);
-          font-size: 0.82rem;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-      }
-      .intro {
-          margin: 22px 0 26px;
-      }
-      .intro h1 {
-          margin: 0 0 10px;
-          font-size: clamp(1.7rem, 4vw, 2.5rem);
-          line-height: 1.05;
-          letter-spacing: -0.05em;
-      }
-      .intro p {
-          margin: 0;
-          color: var(--muted);
-          font-size: 0.98rem;
-          line-height: 1.65;
-      }
-      .meta {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 12px;
-          margin-bottom: 22px;
-      }
-      .meta-card {
-          padding: 14px 16px;
-          border-radius: 18px;
-          background: rgba(255,255,255,0.72);
-          border: 1px solid var(--line);
-      }
-      .meta-card strong {
-          display: block;
-          font-size: 1.2rem;
-          letter-spacing: -0.04em;
-      }
-      .meta-card span {
-          display: block;
-          margin-top: 4px;
-          color: var(--muted);
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.12em;
-      }
-      .panel-head {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 16px;
-      }
-      .panel-head h2 {
-          margin: 0;
-          font-size: 1.05rem;
-          letter-spacing: -0.02em;
-      }
-      .panel-head p {
-          margin: 4px 0 0;
-          color: var(--muted);
-          font-size: 0.9rem;
-      }
-      .pill {
-          padding: 8px 10px;
-          border-radius: 999px;
-          border: 1px solid var(--line);
-          background: rgba(255,255,255,0.72);
-          color: var(--muted);
-          font-size: 0.78rem;
-      }
-      .empty-state {
-          padding: 24px 18px;
-          border-radius: 20px;
-          border: 1px dashed rgba(15, 23, 42, 0.12);
-          background: rgba(255,255,255,0.52);
-          text-align: center;
-          color: var(--muted);
-          line-height: 1.7;
-      }
-      ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-      li a, .group summary {
-          display: flex;
-          align-items: center;
-          width: 100%;
-          min-height: 56px;
-          padding: 13px 14px;
-          border-radius: 18px;
-          border: 1px solid var(--line);
-          background: rgba(255,255,255,0.72);
-          color: inherit;
-          text-decoration: none;
-          transition: border-color 0.16s ease, background 0.16s ease;
-      }
-      li a:hover, .group summary:hover {
-          border-color: rgba(15,118,110,0.18);
-          background: rgba(15,118,110,0.04);
-      }
-      li a::before {
-          content: '↗';
-          display: inline-grid;
-          place-items: center;
-          width: 34px;
-          height: 34px;
-          margin-right: 12px;
-          border-radius: 12px;
-          background: rgba(15,118,110,0.08);
-          color: var(--accent);
-          font-size: 0.95rem;
-      }
-      li a code {
-          background: none;
-          padding: 0;
-          font-size: 0.94rem;
-          color: #eff8ff;
-          font-family: var(--mono);
-      }
-      .group summary {
-          cursor: pointer;
-          color: var(--text);
-          user-select: none;
-          list-style: none;
-      }
-      .group summary::-webkit-details-marker { display: none; }
-      .group summary::before {
-          content: '';
-          width: 8px;
-          height: 8px;
-          margin-right: 14px;
-          border-right: 2px solid currentColor;
-          border-bottom: 2px solid currentColor;
-          transform: rotate(-45deg);
-          transition: transform 0.18s ease;
-      }
-      .group summary::after {
-          content: 'Group';
-          margin-left: auto;
-          color: var(--muted);
-          font-size: 0.74rem;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-      }
-      .group details[open] summary::before { transform: rotate(45deg); }
-      .group details ul {
-          margin-top: 10px;
-          padding-left: 14px;
-          border-left: 1px solid rgba(15,23,42,0.08);
-      }
-      @media (max-width: 640px) {
-          .wrap { padding: 20px 14px; }
-          .shell { padding: 20px; border-radius: 24px; }
-          .meta { grid-template-columns: 1fr; }
-      }
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 96px 24px 120px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 64px;
+    }
+    .logo { width: 22px; height: 22px; display: block; }
+    .logo svg { width: 100%; height: 100%; }
+    header h1 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+    }
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 0 2px 14px;
+    }
+    .section-head .label {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    .section-head .count {
+      font-size: 12px;
+      color: var(--subtle);
+      font-variant-numeric: tabular-nums;
+      font-family: var(--mono);
+    }
+    .routes {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      border-top: 1px solid var(--border);
+    }
+    .routes li {
+      border-bottom: 1px solid var(--border);
+    }
+    .routes li a,
+    .group > details > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 2px;
+      color: var(--text);
+      text-decoration: none;
+      font-family: var(--mono);
+      font-size: 13px;
+      transition: background 0.12s ease, padding 0.12s ease;
+    }
+    .routes li a .path,
+    .group > details > summary .path {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .routes li a::after {
+      content: '→';
+      color: var(--subtle);
+      font-family: -apple-system, sans-serif;
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .routes li a:hover {
+      background: var(--hover);
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    .routes li a:hover::after {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .group > details > summary {
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+    }
+    .group > details > summary::-webkit-details-marker { display: none; }
+    .group > details > summary .count {
+      color: var(--subtle);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .group > details > summary:hover {
+      background: var(--hover);
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    .group > details[open] > summary {
+      color: var(--muted);
+    }
+    .group > details[open] > summary .count {
+      opacity: 0;
+    }
+    .group details ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      border-top: 1px solid var(--border);
+    }
+    .group details ul li {
+      border-bottom: 1px solid var(--border);
+    }
+    .group details ul li:last-child {
+      border-bottom: none;
+    }
+    .group details ul li a {
+      padding-left: 20px;
+    }
+    .group details ul li a:hover {
+      padding-left: 26px;
+    }
+    .empty {
+      padding: 64px 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    @media (max-width: 560px) {
+      .container { padding: 56px 20px 80px; }
+      header { margin-bottom: 48px; }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <main class="shell">
-      <div class="brand">
-        <div class="brand-mark">${LOGO_SVG}</div>
-        <div class="brand-meta">
-          <strong>Warp</strong>
-          <span>Proxy Routes</span>
-        </div>
-      </div>
-      <div class="intro">
-        <h1>Cloudflare Workers Proxy</h1>
-        <p>Browse the configured routes below and open the proxied destination directly.</p>
-      </div>
-      <div class="meta">
-        <div class="meta-card">
-          <strong>${routeCount}</strong>
-          <span>Configured Routes</span>
-        </div>
-        <div class="meta-card">
-          <strong>KV</strong>
-          <span>Backed Config</span>
-        </div>
-        <div class="meta-card">
-          <strong>/admin</strong>
-          <span>Admin Panel</span>
-        </div>
-      </div>
-      <section>
-        <div class="panel-head">
-          <div>
-            <h2>Available Routes</h2>
-            <p>Select a route to access its proxied target.</p>
-          </div>
-          <div class="pill">${routeCount} route${routeCount === 1 ? '' : 's'}</div>
-        </div>
-        ${routesHtml}
-      </section>
-    </main>
+  <div class="container">
+    <header>
+      <span class="logo">${LOGO_SVG}</span>
+      <h1>Warp</h1>
+    </header>
+    <div class="section-head">
+      <span class="label">Routes</span>
+      <span class="count">${routeCount}</span>
+    </div>
+    ${routesHtml}
   </div>
 </body>
 </html>`;

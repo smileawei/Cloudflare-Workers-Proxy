@@ -1,9 +1,0 @@
-name = "cloudflare-workers-proxy"
-main = "worker.js"
-compatibility_date = "2026-04-16"
-
-[[kv_namespaces]]
-binding = "ROUTES_KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
-preview_id = "REPLACE_WITH_YOUR_KV_PREVIEW_ID"
-

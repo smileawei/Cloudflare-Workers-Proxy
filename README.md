@@ -1,13 +1,13 @@
-# Cloudflare Workers Proxy
+# Cloudflare Pages Proxy
 
-这是一个基于 Cloudflare Workers 的前缀路由反向代理。它通过 Cloudflare KV 保存路由映射，将访问 `https://your-worker.example.com/<prefix>/...` 的请求转发到对应的目标站点，并提供一个简单的 `/admin` 管理后台来维护这些路由。
+一个基于 Cloudflare Pages Functions 的前缀路由反向代理。通过 Cloudflare KV 保存 `前缀 -> 目标地址` 映射，将访问 `https://your-site.example.com/<prefix>/...` 的请求转发到对应的上游站点，并提供一个简单的 `/admin` 管理后台来维护这些路由。
 
 - 群聊: [HeroCore](https://t.me/HeroCore)
 - 频道: [HeroMsg](https://t.me/HeroMsg)
 
 ## 简介
 
-当前版本的 Worker 不是把完整目标 URL 直接拼在路径后面，而是基于“路由前缀 -> 目标地址”的映射工作。
+基于 "路由前缀 -> 目标地址" 的映射工作。
 
 例如：
 
@@ -16,9 +16,9 @@
 
 当访问：
 
-- `https://your-worker.example.com/docs/getting-started`
+- `https://your-site.example.com/docs/getting-started`
 
-Worker 会把请求转发到：
+会把请求转发到：
 
 - `https://example.com/docs/getting-started`
 
@@ -33,61 +33,31 @@ Worker 会把请求转发到：
 
 ## 项目结构
 
-- [worker.js](worker.js): Worker 主逻辑，包含代理逻辑、管理 API 和前端页面
-
-这个仓库当前以根目录的 [worker.js](worker.js) 作为主入口，并已包含最小可用的 [wrangler.toml](wrangler.toml) 和 [package.json](package.json)，可以直接用 Wrangler 本地调试和部署。
+- [functions/\[\[path\]\].js](functions/[[path]].js): Pages Functions catch-all 路由，包含代理逻辑、管理 API 和前端页面
+- [public/](public): 静态资源目录，用于 Pages 部署时的静态内容占位
 
 ## 所需绑定
 
-部署前请确保为 Worker 配置以下绑定：
+部署前请在 Cloudflare Pages 项目中配置以下绑定：
 
 - `ROUTES_KV`
-  用于保存路由配置。代码会把所有路由作为 JSON 存在 `routes` 这个 key 下。
+  KV Namespace 绑定，用于保存路由配置。代码会把所有路由作为 JSON 存在 `routes` 这个 key 下。
 - `ADMIN_PASSWORD`
-  管理后台使用的管理员密码。前端会通过 `X-Admin-Token` 请求头把它发送给 Worker。
+  管理后台密码（建议以 Secret 形式存放）。前端会通过 `X-Admin-Token` 请求头把它发送给 Pages Functions。
 
 如果没有绑定 `ROUTES_KV`，读取路由时会回退为空对象，保存路由时会报错。
 如果没有设置 `ADMIN_PASSWORD`，管理 API 的鉴权会始终失败。
 
 ## 部署方法
 
-### 方式一：Cloudflare Dashboard
+推荐直接使用 Cloudflare Dashboard 部署：
 
-1. 登录 Cloudflare，进入 Workers & Pages。
-2. 创建一个新的 Worker。
-3. 将 [worker.js](worker.js) 的内容粘贴进去。
-4. 创建一个 KV Namespace，并把它绑定到 Worker，变量名设为 `ROUTES_KV`。
-5. 为 Worker 添加一个名为 `ADMIN_PASSWORD` 的环境变量或 Secret。
-6. 部署 Worker。
-
-### 方式二：使用 Wrangler
-
-仓库已提供基础的 [wrangler.toml](wrangler.toml)，首次使用前需要把其中的 KV Namespace ID 替换成你自己的值：
-
-- `id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"`
-- `preview_id = "REPLACE_WITH_YOUR_KV_PREVIEW_ID"`
-
-然后执行：
-
-```bash
-npm install
-wrangler kv namespace create ROUTES_KV
-wrangler secret put ADMIN_PASSWORD
-wrangler deploy
-```
-
-如果你是先创建 KV，再回填配置，更合理的顺序是：
-
-1. `wrangler kv namespace create ROUTES_KV`
-2. 把返回的 `id` 和 `preview_id` 写入 [wrangler.toml](wrangler.toml)
-3. `wrangler secret put ADMIN_PASSWORD`
-4. `npm run deploy`
-
-本地调试可用：
-
-```bash
-npm run dev
-```
+1. 在 Cloudflare Dashboard 创建一个 Pages 项目，连接本仓库。
+2. 构建设置保持默认（无需构建命令；输出目录为 `public`）。
+3. 在 Pages 项目的 Settings 中：
+   - Functions → KV namespace bindings：添加绑定，变量名 `ROUTES_KV`，指向你创建的 KV namespace。
+   - Environment variables：新增 `ADMIN_PASSWORD`（Production / Preview 都建议加）。
+4. 重新部署使绑定生效。
 
 ## 使用方式
 
@@ -95,7 +65,7 @@ npm run dev
 
 访问：
 
-- `https://your-worker.example.com/admin`
+- `https://your-site.example.com/admin`
 
 输入管理员密码后，可以在管理后台进行：
 
@@ -113,8 +83,8 @@ npm run dev
 
 那么：
 
-- `https://your-worker.example.com/docs`
-- `https://your-worker.example.com/docs/getting-started?lang=zh`
+- `https://your-site.example.com/docs`
+- `https://your-site.example.com/docs/getting-started?lang=zh`
 
 会分别代理到：
 
@@ -125,13 +95,13 @@ npm run dev
 
 访问根路径：
 
-- `https://your-worker.example.com/`
+- `https://your-site.example.com/`
 
 会显示当前已配置路由的列表页。
 
 ## 管理 API
 
-当前 Worker 内置以下管理 API，路径前缀为 `/admin/api`。除 `OPTIONS` 预检外，都需要携带请求头：
+内置以下管理 API，路径前缀为 `/admin/api`。除 `OPTIONS` 预检外，都需要携带请求头：
 
 ```http
 X-Admin-Token: <ADMIN_PASSWORD>
@@ -173,11 +143,11 @@ X-Admin-Token: <ADMIN_PASSWORD>
 - 路由匹配采用最长前缀优先
 - HTML 内容改写只处理 `href`、`src`、`action` 中以 `/` 开头的相对路径
 - 并不是所有网站都能被完整代理，复杂前端站点、脚本动态拼接资源、严格 CSP 或依赖特殊请求头的站点可能表现异常
-- 会透传大部分请求头，但会过滤掉以 `cf-` 开头的头
+- 会透传大部分请求头，但会过滤掉以 `cf-` 开头的头以及 `host`
 
 ## 注意事项
 
-- 请合理限制谁能访问你的 Worker 地址和 `/admin` 页面。
+- 请合理限制谁能访问你的站点地址和 `/admin` 页面。
 - `ADMIN_PASSWORD` 当前采用请求头明文比对，适合轻量自用，不适合作为高强度管理系统。
 - 请勿将该服务用于未经授权的抓取、绕过限制或其他非法用途。
 - 代理第三方网站时，请确认你拥有合法权限，并遵守目标站点的服务条款、版权和当地法律法规。
@@ -193,9 +163,9 @@ X-Admin-Token: <ADMIN_PASSWORD>
 
 ## 资源
 
-- [Cloudflare Workers 文档](https://developers.cloudflare.com/workers)
+- [Cloudflare Pages 文档](https://developers.cloudflare.com/pages/)
+- [Pages Functions 文档](https://developers.cloudflare.com/pages/functions/)
 - [Cloudflare KV 文档](https://developers.cloudflare.com/kv/)
-- [Cloudflare Workers 设置](https://developers.cloudflare.com/workers/platform/settings)
 
 [![Powered by DartNode](https://dartnode.com/branding/DN-Open-Source-sm.png)](https://dartnode.com "Powered by DartNode - Free VPS for Open Source")
 
