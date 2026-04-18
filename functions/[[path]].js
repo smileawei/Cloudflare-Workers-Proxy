@@ -540,9 +540,36 @@ function getRootHtml(routes) {
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
     }
+    footer {
+      margin-top: 80px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    footer .def .word {
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--text);
+      margin-right: 6px;
+    }
+    footer .def .phon,
+    footer .def .pos {
+      color: var(--subtle);
+      font-style: italic;
+      margin-right: 6px;
+    }
+    footer .copy {
+      color: var(--subtle);
+      font-variant-numeric: tabular-nums;
+    }
     @media (max-width: 560px) {
       .container { padding: 56px 20px 80px; }
       header { margin-bottom: 48px; }
+      footer { margin-top: 56px; }
     }
   </style>
 </head>
@@ -557,6 +584,10 @@ function getRootHtml(routes) {
       <span class="count">${routeCount}</span>
     </div>
     ${routesHtml}
+    <footer>
+      <div class="def"><span class="word">warp</span><span class="phon">/wɔːrp/</span><span class="pos">v.</span>to bend or redirect from a straight course.</div>
+      <div class="copy">© 2026 Warp</div>
+    </footer>
   </div>
 </body>
 </html>`;
