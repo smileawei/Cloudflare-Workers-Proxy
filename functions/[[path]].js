@@ -415,8 +415,8 @@ function getRootHtml(routes) {
     }
     header {
       display: flex;
-      align-items: center;
-      gap: 14px;
+      align-items: flex-end;
+      gap: 8px;
       margin-bottom: 64px;
     }
     .logo { width: 96px; height: 96px; display: block; }
