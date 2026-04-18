@@ -419,7 +419,7 @@ function getRootHtml(routes) {
       gap: 8px;
       margin-bottom: 64px;
     }
-    .logo { width: 40px; display: block; }
+    .logo { width: 48px; display: block; }
     .logo svg { display: block; width: 100%; height: auto; }
     header h1 {
       margin: 0;
