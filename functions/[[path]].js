@@ -374,7 +374,7 @@ function getRootHtml(routes) {
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>Warp</title>
+  <title>Warp Speed</title>
   <link rel="icon" type="image/svg+xml" href="${favicon}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
@@ -577,7 +577,7 @@ function getRootHtml(routes) {
   <div class="container">
     <header>
       <span class="logo">${LOGO_SVG}</span>
-      <h1>Warp</h1>
+      <h1>Warp Speed</h1>
     </header>
     <div class="section-head">
       <span class="label">Routes</span>
@@ -585,8 +585,8 @@ function getRootHtml(routes) {
     </div>
     ${routesHtml}
     <footer>
-      <div class="def"><span class="word">warp</span><span class="phon">/wɔːrp/</span><span class="pos">v.</span>to bend or redirect from a straight course.</div>
-      <div class="copy">© 2026 Warp</div>
+      <div class="def"><span class="word">warp</span><span class="phon">/wɔːrp/</span><span class="pos">v.</span>to bend space-time and traverse it at faster-than-light speed.</div>
+      <div class="copy">© 2026 Warp Speed</div>
     </footer>
   </div>
 </body>
