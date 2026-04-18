@@ -363,7 +363,7 @@ function renderRoutesList(routes) {
   return `<ul class="routes">${rootHtml}${groupsHtml}</ul>`;
 }
 
-const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="14 32 92 64" fill="none"><style>.a{fill:#2c3e50}@media(prefers-color-scheme:dark){.a{fill:#e0e0e0}}</style><path class="a" d="M16 54 L46 54 L46 42 L66 64 L46 86 L46 74 L16 74 Z"/><ellipse cx="68" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5" stroke-opacity="0.55"/><ellipse cx="56" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5"/><path class="a" d="M78 58 L88 58 L88 48 L104 64 L88 80 L88 70 L78 70 Z"/></svg>`;
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="16 33 88 62" fill="none"><style>.a{fill:#2c3e50}@media(prefers-color-scheme:dark){.a{fill:#e0e0e0}}</style><path class="a" d="M16 54 L46 54 L46 42 L66 64 L46 86 L46 74 L16 74 Z"/><ellipse cx="68" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5" stroke-opacity="0.55"/><ellipse cx="56" cy="64" rx="6" ry="28" stroke="#14b8a6" stroke-width="5"/><path class="a" d="M78 58 L88 58 L88 48 L104 64 L88 80 L88 70 L78 70 Z"/></svg>`;
 
 function getRootHtml(routes) {
   const routesHtml = renderRoutesList(routes);
@@ -419,13 +419,14 @@ function getRootHtml(routes) {
       gap: 8px;
       margin-bottom: 64px;
     }
-    .logo { width: 96px; height: 96px; display: block; }
-    .logo svg { width: 100%; height: 100%; }
+    .logo { width: 96px; display: block; }
+    .logo svg { display: block; width: 100%; height: auto; }
     header h1 {
       margin: 0;
       font-size: 28px;
       font-weight: 700;
       letter-spacing: -0.03em;
+      line-height: 1;
     }
     .section-head {
       display: flex;
