@@ -416,16 +416,16 @@ function getRootHtml(routes) {
     header {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 14px;
       margin-bottom: 64px;
     }
-    .logo { width: 22px; height: 22px; display: block; }
+    .logo { width: 40px; height: 40px; display: block; }
     .logo svg { width: 100%; height: 100%; }
     header h1 {
       margin: 0;
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: -0.005em;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
     }
     .section-head {
       display: flex;
