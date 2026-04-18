@@ -2,9 +2,6 @@
 
 一个基于 Cloudflare Pages Functions 的前缀路由反向代理。通过 Cloudflare KV 保存 `前缀 -> 目标地址` 映射，将访问 `https://your-site.example.com/<prefix>/...` 的请求转发到对应的上游站点，并提供一个简单的 `/admin` 管理后台来维护这些路由。
 
-- 群聊: [HeroCore](https://t.me/HeroCore)
-- 频道: [HeroMsg](https://t.me/HeroMsg)
-
 ## 简介
 
 基于 "路由前缀 -> 目标地址" 的映射工作。
